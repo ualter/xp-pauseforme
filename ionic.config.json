@@ -1,0 +1,8 @@
+{
+  "name": "xp-pauseforme",
+  "integrations": {
+    "cordova": {}
+  },
+  "type": "ionic-angular",
+  "pro_id": "e1d0b174"
+}
