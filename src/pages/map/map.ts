@@ -1,12 +1,28 @@
 import { Component, ViewChild, ElementRef } from '@angular/core';
 import { NavController, NavParams } from 'ionic-angular';
 import { Geolocation } from '@ionic-native/geolocation'
+import { XpWebSocketService }  from '../../app/services/xp.web.socket.service';
+import * as Rx from 'rxjs/Rx';
 import leaflet from 'leaflet';
+import { Utils } from '../../app/services/utils';
+import { Aviation } from '../../app/services/aviation';
 
 const MAX_ZOOM         = 15;
 var   LATITUDE         = 0;
 var   LONGITUDE        = 0;
 var   ZOOM_PAN_OPTIONS = {animate: true, duration: 0.25, easeLinearity: 1.0, noMoveStart: false}; /*{animate: true, duration: 3.5, easeLinearity: 1.0, noMoveStart: false}*/
+
+var AIRPLANE_ICON = leaflet.icon({
+  iconUrl:      'assets/imgs/airplane-a320.png',
+  shadowUrl:    'assets/imgs/airplane-a320-shadow-0.png',
+  iconSize:     [70, 67],
+  shadowSize:   [70, 67],
+  //iconSize:     [268, 257],
+  //shadowSize:   [268, 257],
+  iconAnchor:   [22, 94],  // point of the icon which will correspond to marker's location
+  shadowAnchor: [10, 80],  // the same for the shadow
+  popupAnchor:  [-3, -76]  // point from which the popup should open relative to the iconAnchor
+});
 
 @Component({
   selector: 'page-map',
@@ -16,8 +32,60 @@ export class MapPage {
 
   @ViewChild('map') mapContainer: ElementRef;
   map: any;
+  subscription = null;
+  avionMarker: any;
+  lastLat: any;
+  lastLng: any;
+
   
-  constructor(public navCtrl: NavController, public navParams: NavParams, private geolocation: Geolocation) {
+  constructor(public navCtrl: NavController, 
+    public navParams: NavParams, 
+    public geolocation: Geolocation, 
+    public xpWsSocket: XpWebSocketService, 
+    public utils: Utils,
+    public aviation: Aviation) {
+
+    this.subscription = this.xpWsSocket.connect("ws://localhost:8080/websocket/xplane/").subscribe(
+      payload => this.onMessageReceived(payload),
+      error => {
+        this.utils.error('Oops', error)
+      }
+    );
+
+  }
+
+  onMessageReceived(payload) {
+    var origin  = payload.origin;
+    var message = payload.data;
+
+    if (/^[\],:{}\s]*$/.test(message.replace(/\\["\\\/bfnrtu]/g, '@').
+        replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']').
+        replace(/(?:^|:|,)(?:\s*\[)+/g, ''))) {
+      var json = JSON.parse(message);
+      this.utils.trace("JSON received: ",json);
+
+      // Bearing the Airplane new given Lat/Lng according with the last Lat/Lng
+      console.log(this.lastLat);
+      if ( (this.lastLat != undefined && this.lastLng != undefined) &&
+           (this.lastLat != json.lat || this.lastLng != json.lng) ) {
+        var bearing = this.aviation.bearing(json.lat,json.lng,this.lastLat,this.lastLng);
+        this.lastLat = json.lat;
+        this.lastLng = json.lng;
+        this.utils.trace("New Bearing..: " + bearing);
+      } 
+
+      // Reposition the Airplane new give Lat/Lng
+      this.updateAirplanePosition(json.lat,json.lng);
+
+    } else {
+      this.utils.warn("Received JSON message it is NOT OK..: \"" + message + "\" from " + origin);
+    }
+  }
+
+  updateAirplanePosition(lat, lng) {
+    this.utils.trace("Airplane new position (Lat/Lng): " + lat + ":" + lng);
+    var newLatLng = new leaflet.LatLng(lat,lng);
+    this.avionMarker.setLatLng(newLatLng);
   }
 
   ionViewDidLoad() {
@@ -31,11 +99,17 @@ export class MapPage {
 
   positionMapWithUserLocation() {
     this.geolocation.getCurrentPosition().then((resp) => {
-      console.log("LatLng: " + resp.coords.latitude + ":" + resp.coords.longitude);
+      this.utils.trace("LatLng: " + resp.coords.latitude + ":" + resp.coords.longitude);
       LATITUDE  = resp.coords.latitude;
       LONGITUDE = resp.coords.longitude;
       var latLng = leaflet.latLng(resp.coords.latitude, resp.coords.longitude);
-      this.map.flyTo(latLng, MAX_ZOOM - 4, ZOOM_PAN_OPTIONS);
+      if ( this.avionMarker == undefined ) {
+        this.utils.trace("Airplaned added to " + LATITUDE + ":" + LONGITUDE);
+        this.avionMarker = leaflet.marker([LATITUDE, LONGITUDE], {icon: AIRPLANE_ICON}).addTo(this.map);
+        this.lastLat = resp.coords.latitude;
+        this.lastLng = resp.coords.longitude;
+      }
+      this.map.flyTo(latLng, MAX_ZOOM - 4, ZOOM_PAN_OPTIONS);      
     }).catch((error) => {
        console.log('Error getting location', error.message);
     });

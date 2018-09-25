@@ -8,6 +8,9 @@ import { StatusBar } from '@ionic-native/status-bar';
 import { SplashScreen } from '@ionic-native/splash-screen';
 import { MapPage } from '../pages/map/map';
 import { SettingsPage } from '../pages/settings/settings';
+import { XpWebSocketService } from './services/xp.web.socket.service';
+import { Utils } from './services/utils';
+import { Aviation } from './services/aviation';
 
 @NgModule({
   declarations: [
@@ -31,6 +34,9 @@ import { SettingsPage } from '../pages/settings/settings';
     StatusBar,
     SplashScreen,
     Geolocation,
+    XpWebSocketService,
+    Utils,
+    Aviation,
     {provide: ErrorHandler, useClass: IonicErrorHandler}
   ]
 })
