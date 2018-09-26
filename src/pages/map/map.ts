@@ -6,6 +6,7 @@ import * as Rx from 'rxjs/Rx';
 import leaflet from 'leaflet';
 import { Utils } from '../../app/services/utils';
 import { Aviation } from '../../app/services/aviation';
+import * as $ from "jquery";
 
 const MAX_ZOOM         = 15;
 var   LATITUDE         = 0;
@@ -15,12 +16,12 @@ var   ZOOM_PAN_OPTIONS = {animate: true, duration: 0.25, easeLinearity: 1.0, noM
 var AIRPLANE_ICON = leaflet.icon({
   iconUrl:      'assets/imgs/airplane-a320.png',
   shadowUrl:    'assets/imgs/airplane-a320-shadow-0.png',
-  iconSize:     [70, 67],
-  shadowSize:   [70, 67],
+  iconSize:     [72, 69],
+  shadowSize:   [72, 69],
   //iconSize:     [268, 257],
   //shadowSize:   [268, 257],
-  iconAnchor:   [22, 94],  // point of the icon which will correspond to marker's location
-  shadowAnchor: [10, 80],  // the same for the shadow
+  iconAnchor:   [0, 0],  // point of the icon which will correspond to marker's location
+  shadowAnchor: [-5, -4],  // the same for the shadow
   popupAnchor:  [-3, -76]  // point from which the popup should open relative to the iconAnchor
 });
 
@@ -36,6 +37,7 @@ export class MapPage {
   avionMarker: any;
   lastLat: any;
   lastLng: any;
+  avionMarkerTranslate3d: any;
 
   
   constructor(public navCtrl: NavController, 
@@ -54,6 +56,12 @@ export class MapPage {
 
   }
 
+  ngAfterViewInit(){
+    $(document).ready(function(){
+      console.log('JQuery is working!!');
+    });
+  }
+
   onMessageReceived(payload) {
     var origin  = payload.origin;
     var message = payload.data;
@@ -65,27 +73,48 @@ export class MapPage {
       this.utils.trace("JSON received: ",json);
 
       // Bearing the Airplane new given Lat/Lng according with the last Lat/Lng
-      console.log(this.lastLat);
+      var bearing;
       if ( (this.lastLat != undefined && this.lastLng != undefined) &&
            (this.lastLat != json.lat || this.lastLng != json.lng) ) {
-        var bearing = this.aviation.bearing(json.lat,json.lng,this.lastLat,this.lastLng);
+
+        bearing = this.aviation.bearing(json.lng,json.lat,this.lastLng,this.lastLat);
+
+        console.log("Actual: " + json.lat + "," + json.lng + "\nLast:" + this.lastLat + "," + this.lastLng +  "\nBearing:" + bearing);    
+
         this.lastLat = json.lat;
         this.lastLng = json.lng;
         this.utils.trace("New Bearing..: " + bearing);
       } 
 
       // Reposition the Airplane new give Lat/Lng
-      this.updateAirplanePosition(json.lat,json.lng);
+      this.updateAirplanePosition(json.lat,json.lng, bearing);
 
     } else {
       this.utils.warn("Received JSON message it is NOT OK..: \"" + message + "\" from " + origin);
     }
   }
 
-  updateAirplanePosition(lat, lng) {
+  updateAirplanePosition(lat, lng, bearing?) {
     this.utils.trace("Airplane new position (Lat/Lng): " + lat + ":" + lng);
+
     var newLatLng = new leaflet.LatLng(lat,lng);
     this.avionMarker.setLatLng(newLatLng);
+
+    if ( bearing != undefined ) {
+        // Adaptation for the current used icon
+        if ( bearing >= 0 && bearing <= 180 ) {
+          bearing += 180;
+        } else {
+          bearing -= 180;
+        }
+
+        var newBearingForTransformCss = this.avionMarker._icon.style.transform + ' rotate(' + bearing +  'deg)';
+        this.avionMarker._icon.style.transform = newBearingForTransformCss;
+        this.avionMarker._icon.style.transformOrigin = "center center 0px";
+
+        this.avionMarker._shadow.style.transform = newBearingForTransformCss;
+        this.avionMarker._shadow.style.transformOrigin = "center center 0px";
+    }
   }
 
   ionViewDidLoad() {
@@ -106,8 +135,10 @@ export class MapPage {
       if ( this.avionMarker == undefined ) {
         this.utils.trace("Airplaned added to " + LATITUDE + ":" + LONGITUDE);
         this.avionMarker = leaflet.marker([LATITUDE, LONGITUDE], {icon: AIRPLANE_ICON}).addTo(this.map);
+        leaflet.DomUtil.addClass(this.avionMarker._icon,'aviationClass');
         this.lastLat = resp.coords.latitude;
         this.lastLng = resp.coords.longitude;
+        this.avionMarkerTranslate3d = this.avionMarker._icon.style.transform;
       }
       this.map.flyTo(latLng, MAX_ZOOM - 4, ZOOM_PAN_OPTIONS);      
     }).catch((error) => {

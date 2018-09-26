@@ -19,7 +19,8 @@ export class Aviation {
         var x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1);
         var brng = Math.atan2(y, x);
 
-        return brng / Math.PI * 180;
+        var bearing = brng / Math.PI * 180;
+        return bearing;
     }
 
     // Calculate the distance based on the two given coordinates (Lat,Lng)
