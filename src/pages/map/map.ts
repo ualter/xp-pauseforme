@@ -7,22 +7,31 @@ import leaflet from 'leaflet';
 import { Utils } from '../../app/services/utils';
 import { Aviation } from '../../app/services/aviation';
 import * as $ from "jquery";
+import { last } from 'rxjs/operator/last';
 
-const MAX_ZOOM         = 15;
-var   LATITUDE         = 0;
-var   LONGITUDE        = 0;
-var   ZOOM_PAN_OPTIONS = {animate: true, duration: 0.25, easeLinearity: 1.0, noMoveStart: false}; /*{animate: true, duration: 3.5, easeLinearity: 1.0, noMoveStart: false}*/
+const MAX_ZOOM                    = 15;
+const ZOOM_PAN_OPTIONS            = {animate: true, duration: 0.25, easeLinearity: 1.0, noMoveStart: false}; /*{animate: true, duration: 3.5, easeLinearity: 1.0, noMoveStart: false}*/
+const AIRPLANE_ICON_WIDTH         = 62;
+const AIRPLANE_ICON_HEIGHT        = 59;
+const AIRPLANE_ICON_ANCHOR_WIDTH  = AIRPLANE_ICON_WIDTH / 2;
+const AIRPLANE_ICON_ANCHOR_HEIGHT = AIRPLANE_ICON_HEIGHT - (AIRPLANE_ICON_HEIGHT - ((AIRPLANE_ICON_HEIGHT*60)/100));
+
+var   map;            
+var   latitude;
+var   longitude;
+var   lastLat;
+var   lastLng;     
+var   lastBearing;
+var   avionMarker;    
 
 var AIRPLANE_ICON = leaflet.icon({
   iconUrl:      'assets/imgs/airplane-a320.png',
   shadowUrl:    'assets/imgs/airplane-a320-shadow-0.png',
-  iconSize:     [72, 69],
-  shadowSize:   [72, 69],
-  //iconSize:     [268, 257],
-  //shadowSize:   [268, 257],
-  iconAnchor:   [0, 0],  // point of the icon which will correspond to marker's location
-  shadowAnchor: [-5, -4],  // the same for the shadow
-  popupAnchor:  [-3, -76]  // point from which the popup should open relative to the iconAnchor
+  iconSize:     [AIRPLANE_ICON_WIDTH, AIRPLANE_ICON_HEIGHT],
+  shadowSize:   [AIRPLANE_ICON_WIDTH, AIRPLANE_ICON_HEIGHT],
+  iconAnchor:   [AIRPLANE_ICON_ANCHOR_WIDTH, AIRPLANE_ICON_ANCHOR_HEIGHT],      // point of the icon which will correspond to marker's location
+  shadowAnchor: [AIRPLANE_ICON_ANCHOR_WIDTH-5, AIRPLANE_ICON_ANCHOR_HEIGHT-4],  // the same for the shadow
+  popupAnchor:  [AIRPLANE_ICON_WIDTH, AIRPLANE_ICON_HEIGHT]                     // point from which the popup should open relative to the iconAnchor
 });
 
 @Component({
@@ -32,13 +41,7 @@ var AIRPLANE_ICON = leaflet.icon({
 export class MapPage {
 
   @ViewChild('map') mapContainer: ElementRef;
-  map: any;
   subscription = null;
-  avionMarker: any;
-  lastLat: any;
-  lastLng: any;
-  avionMarkerTranslate3d: any;
-
   
   constructor(public navCtrl: NavController, 
     public navParams: NavParams, 
@@ -47,7 +50,8 @@ export class MapPage {
     public utils: Utils,
     public aviation: Aviation) {
 
-    this.subscription = this.xpWsSocket.connect("ws://localhost:8080/websocket/xplane/").subscribe(
+    //this.subscription = this.xpWsSocket.connect("ws://10.253.163.97:9090/websocket/xplane/").subscribe(
+    this.subscription = this.xpWsSocket.connect("ws://localhost:9090/websocket/xplane/").subscribe(  
       payload => this.onMessageReceived(payload),
       error => {
         this.utils.error('Oops', error)
@@ -58,7 +62,7 @@ export class MapPage {
 
   ngAfterViewInit(){
     $(document).ready(function(){
-      console.log('JQuery is working!!');
+      //console.log('JQuery is working!!');
     });
   }
 
@@ -74,16 +78,14 @@ export class MapPage {
 
       // Bearing the Airplane new given Lat/Lng according with the last Lat/Lng
       var bearing;
-      if ( (this.lastLat != undefined && this.lastLng != undefined) &&
-           (this.lastLat != json.lat || this.lastLng != json.lng) ) {
+      if ( (lastLat != undefined && lastLng != undefined) &&
+           (lastLat != json.lat || lastLng != json.lng) ) {
 
-        bearing = this.aviation.bearing(json.lng,json.lat,this.lastLng,this.lastLat);
+        bearing = this.aviation.bearing(json.lng,json.lat,lastLng,lastLat);
 
-        console.log("Actual: " + json.lat + "," + json.lng + "\nLast:" + this.lastLat + "," + this.lastLng +  "\nBearing:" + bearing);    
-
-        this.lastLat = json.lat;
-        this.lastLng = json.lng;
-        this.utils.trace("New Bearing..: " + bearing);
+        lastLat     = json.lat;
+        lastLng     = json.lng;
+        this.utils.trace("Bearing..: " + bearing);
       } 
 
       // Reposition the Airplane new give Lat/Lng
@@ -98,7 +100,7 @@ export class MapPage {
     this.utils.trace("Airplane new position (Lat/Lng): " + lat + ":" + lng);
 
     var newLatLng = new leaflet.LatLng(lat,lng);
-    this.avionMarker.setLatLng(newLatLng);
+    avionMarker.setLatLng(newLatLng);
 
     if ( bearing != undefined ) {
         // Adaptation for the current used icon
@@ -108,13 +110,23 @@ export class MapPage {
           bearing -= 180;
         }
 
-        var newBearingForTransformCss = this.avionMarker._icon.style.transform + ' rotate(' + bearing +  'deg)';
-        this.avionMarker._icon.style.transform = newBearingForTransformCss;
-        this.avionMarker._icon.style.transformOrigin = "center center 0px";
-
-        this.avionMarker._shadow.style.transform = newBearingForTransformCss;
-        this.avionMarker._shadow.style.transformOrigin = "center center 0px";
+        lastBearing = bearing;
+        MapPage.rotateMarker(bearing);
     }
+
+    map.panTo(newLatLng);
+
+    latitude  = lat;
+    longitude = lng;
+  }
+
+  static rotateMarker(bearing) {
+    var newBearingForTransformCss = avionMarker._icon.style.transform + ' rotate(' + bearing +  'deg)';
+    avionMarker._icon.style.transform = newBearingForTransformCss;
+    avionMarker._icon.style.transformOrigin = "center center 0px";
+
+    avionMarker._shadow.style.transform = newBearingForTransformCss;
+    avionMarker._shadow.style.transformOrigin = "center center 0px";
   }
 
   ionViewDidLoad() {
@@ -129,30 +141,32 @@ export class MapPage {
   positionMapWithUserLocation() {
     this.geolocation.getCurrentPosition().then((resp) => {
       this.utils.trace("LatLng: " + resp.coords.latitude + ":" + resp.coords.longitude);
-      LATITUDE  = resp.coords.latitude;
-      LONGITUDE = resp.coords.longitude;
+      latitude  = resp.coords.latitude;
+      longitude = resp.coords.longitude;
       var latLng = leaflet.latLng(resp.coords.latitude, resp.coords.longitude);
-      if ( this.avionMarker == undefined ) {
-        this.utils.trace("Airplaned added to " + LATITUDE + ":" + LONGITUDE);
-        this.avionMarker = leaflet.marker([LATITUDE, LONGITUDE], {icon: AIRPLANE_ICON}).addTo(this.map);
-        leaflet.DomUtil.addClass(this.avionMarker._icon,'aviationClass');
-        this.lastLat = resp.coords.latitude;
-        this.lastLng = resp.coords.longitude;
-        this.avionMarkerTranslate3d = this.avionMarker._icon.style.transform;
+      if ( avionMarker == undefined ) {
+        this.utils.trace("Airplaned added to " + latitude + ":" + longitude);
+        avionMarker = leaflet.marker([latitude, longitude], {icon: AIRPLANE_ICON}).addTo(map);
+        leaflet.DomUtil.addClass(avionMarker._icon,'aviationClass');
+        lastLat = resp.coords.latitude;
+        lastLng = resp.coords.longitude;
       }
-      this.map.flyTo(latLng, MAX_ZOOM - 4, ZOOM_PAN_OPTIONS);      
+
+      var marker = leaflet.marker([latitude, longitude]).addTo(map);
+
+      map.flyTo(latLng, MAX_ZOOM - 4, ZOOM_PAN_OPTIONS);      
     }).catch((error) => {
+       this.utils.error('Error getting location: ' + error.message);
        console.log('Error getting location', error.message);
     });
 
     let watch = this.geolocation.watchPosition();
     watch.subscribe((data) => {
+      //console.log(data);
       // data can be a set of coordinates, or an error (if an error occurred).
       // data.coords.latitude
       // data.coords.longitude
     });
-
-    
   }
 
   loadMap() {
@@ -175,9 +189,90 @@ export class MapPage {
       "Default":   standardTile
     };
 
-    this.map = leaflet.map("map", {layers: [standardTile]}).fitWorld();
-    this.map.addControl(this.createGoToLocationButton());
-    leaflet.control.layers(baseLayers).addTo(this.map);
+    map = leaflet.map("map", {
+          layers: [standardTile], 
+          minZoom: 3
+        }
+    ).setView([41.5497, 2.0989], MAX_ZOOM);
+    map.addControl(this.createGoToLocationButton());
+    leaflet.control.layers(baseLayers).addTo(map);
+
+    map.on('zoomend', this.zoomListener);
+  }
+
+  zoomListener() {
+    var size = [0, 0];
+    var zoom = map.getZoom();
+    if ( zoom == 18 ) {
+    } else
+    if ( zoom == 17 ) {
+    } else
+    if ( zoom == 16 ) {
+    } else
+    if ( zoom == 15 ) {
+    } else
+    if ( zoom == 14 ) {
+    } else
+    if ( zoom == 13 ) {
+    } else
+    if ( zoom == 12 ) {
+    } else
+    if ( zoom == 11 ) {
+    } else
+    if ( zoom == 10 ) {
+      size[0] = 0.5;
+      size[1] = 0.5;
+    } else
+    if ( zoom == 9 ) {
+      size[0] = 3;
+      size[1] = 3;
+    } else
+    if ( zoom == 8 ) {
+      size[0] = 4;
+      size[1] = 4;
+    } else
+    if ( zoom == 7 ) {
+      size[0] = 6;
+      size[1] = 6;
+    } else
+    if ( zoom == 6 ) {
+      size[0] = 10;
+      size[1] = 10;
+    } else
+    if ( zoom == 5 ) {
+      size[0] = 12;
+      size[1] = 12;
+    } else
+    if ( zoom == 4 ) {
+      size[0] = 14;
+      size[1] = 14;
+    } else
+    if ( zoom == 3 ) {
+      size[0] = 16;
+      size[1] = 16;
+    }
+
+    AIRPLANE_ICON.options.iconSize[0]   = (AIRPLANE_ICON_WIDTH   - size[0]);
+    AIRPLANE_ICON.options.iconSize[1]   = (AIRPLANE_ICON_HEIGHT  - size[1]);
+    AIRPLANE_ICON.options.shadowSize[0] = (AIRPLANE_ICON_WIDTH   - size[0]);
+    AIRPLANE_ICON.options.shadowSize[1] = (AIRPLANE_ICON_HEIGHT  - size[1]);
+
+    var widthAnchor  = (AIRPLANE_ICON.options.iconSize[0] / 2);
+    var heightAnchor = (AIRPLANE_ICON.options.iconSize[1] - ((AIRPLANE_ICON.options.iconSize[1] * 50)/100));
+    AIRPLANE_ICON.options.iconAnchor[0]   = widthAnchor;
+    AIRPLANE_ICON.options.iconAnchor[1]   = heightAnchor;
+    AIRPLANE_ICON.options.shadowAnchor[0] = widthAnchor  - 5;
+    AIRPLANE_ICON.options.shadowAnchor[1] = heightAnchor - 4;
+
+    //avionMarker._icon.style.visibility   = "hidden";
+    //avionMarker._shadow.style.visibility = "hidden";
+    avionMarker.setIcon(AIRPLANE_ICON);
+    MapPage.rotateMarker(lastBearing);
+    //avionMarker._icon.style.visibility   = "";
+    //avionMarker._shadow.style.visibility = "";
+
+    map.panTo(leaflet.latLng(latitude,longitude));
+    console.log(zoom);
   }
 
   // Localization Button Control Creation for Leaflet maps
@@ -202,8 +297,7 @@ export class MapPage {
           container.appendChild(icon);
           
           container.onclick = function() {
-            console.log("button Clicked");
-            map.flyTo({lon: LONGITUDE, lat: LATITUDE}, MAX_ZOOM - 4, ZOOM_PAN_OPTIONS);
+            map.flyTo({lon: longitude, lat: latitude}, MAX_ZOOM /*- 4*/, ZOOM_PAN_OPTIONS);
           }
           return container;
       }
