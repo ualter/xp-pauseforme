@@ -23,6 +23,9 @@ var   lastLat;
 var   lastLng;     
 var   lastBearing;
 var   avionMarker;    
+var   followAirplane;
+var   gamePaused;
+var   xPlaneWsServer;
 
 var AIRPLANE_ICON = leaflet.icon({
   iconUrl:      'assets/imgs/airplane-a320.png',
@@ -57,7 +60,7 @@ export class MapPage {
         this.utils.error('Oops', error)
       }
     );
-
+    xPlaneWsServer = xpWsSocket;
   }
 
   ngAfterViewInit(){
@@ -90,7 +93,6 @@ export class MapPage {
 
       // Reposition the Airplane new give Lat/Lng
       this.updateAirplanePosition(json.lat,json.lng, bearing);
-
     } else {
       this.utils.warn("Received JSON message it is NOT OK..: \"" + message + "\" from " + origin);
     }
@@ -114,7 +116,9 @@ export class MapPage {
         MapPage.rotateMarker(bearing);
     }
 
-    map.panTo(newLatLng);
+    if ( followAirplane ) {
+      map.panTo(newLatLng);
+    }
 
     latitude  = lat;
     longitude = lng;
@@ -150,9 +154,9 @@ export class MapPage {
         leaflet.DomUtil.addClass(avionMarker._icon,'aviationClass');
         lastLat = resp.coords.latitude;
         lastLng = resp.coords.longitude;
-      }
 
-      var marker = leaflet.marker([latitude, longitude]).addTo(map);
+        leaflet.marker([latitude, longitude]).addTo(map);
+      }
 
       map.flyTo(latLng, MAX_ZOOM - 4, ZOOM_PAN_OPTIONS);      
     }).catch((error) => {
@@ -195,6 +199,8 @@ export class MapPage {
         }
     ).setView([41.5497, 2.0989], MAX_ZOOM);
     map.addControl(this.createGoToLocationButton());
+    map.addControl(this.createFollowAirplaneButton());
+    map.addControl(this.createPlayPauseButton());
     leaflet.control.layers(baseLayers).addTo(map);
 
     map.on('zoomend', this.zoomListener);
@@ -264,14 +270,12 @@ export class MapPage {
     AIRPLANE_ICON.options.shadowAnchor[0] = widthAnchor  - 5;
     AIRPLANE_ICON.options.shadowAnchor[1] = heightAnchor - 4;
 
-    //avionMarker._icon.style.visibility   = "hidden";
-    //avionMarker._shadow.style.visibility = "hidden";
     avionMarker.setIcon(AIRPLANE_ICON);
     MapPage.rotateMarker(lastBearing);
-    //avionMarker._icon.style.visibility   = "";
-    //avionMarker._shadow.style.visibility = "";
 
-    map.panTo(leaflet.latLng(latitude,longitude));
+    if ( followAirplane ) {
+      map.panTo(leaflet.latLng(latitude,longitude));
+    }
     console.log(zoom);
   }
 
@@ -284,20 +288,17 @@ export class MapPage {
       },
      
       onAdd: function (map) {
-          var container = leaflet.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
-          container.style.backgroundColor = 'white';
-          container.style.width           = '33px';
-          container.style.height          = '33px';
-          container.style.paddingTop      = "6px";
-          container.style.paddingLeft     = "8px";
+          var container = MapPage.createContainerButton();
 
-          var icon = leaflet.DomUtil.create('i', 'fas fa-location-arrow');
+          var icon = leaflet.DomUtil.create('i', 'fas fa-location-arrow fa-3x');
           icon.style.width  = '30px';
           icon.style.height = '30px';
           container.appendChild(icon);
           
           container.onclick = function() {
+            container.style.color = "rgba(0, 0, 0, 0.8)";
             map.flyTo({lon: longitude, lat: latitude}, MAX_ZOOM /*- 4*/, ZOOM_PAN_OPTIONS);
+            container.style.color = "rgba(47, 79, 79, 0.8)";
           }
           return container;
       }
@@ -305,4 +306,96 @@ export class MapPage {
     return new locationButtonControl();
   }
 
+  createFollowAirplaneButton() {
+    var followAirplaneButtonControl = leaflet.Control.extend({
+      options: {
+        position: 'topleft' 
+        //control position - allowed: 'topleft', 'topright', 'bottomleft', 'bottomright'
+      },
+     
+      onAdd: function (map) {
+          var container = MapPage.createContainerButton();
+
+          var icon = leaflet.DomUtil.create('i', 'fas fa-plane fa-3x');
+          icon.style.width     = '40px';
+          icon.style.height    = '40px';
+          icon.style.margin    = "-8px 0px 0px 5px";
+          icon.style.transform = 'rotate(315deg)';
+          container.appendChild(icon);
+          
+          container.onclick = function() {
+            followAirplane = !followAirplane;
+            if ( followAirplane ) {
+              container.style.color = "rgba(0, 0, 0, 0.8)";
+              //map.panTo([latitude,longitude]);
+              map.flyTo({lon: longitude, lat: latitude}, map.getZoom(), ZOOM_PAN_OPTIONS);
+            } else {
+              container.style.color = "rgba(47, 79, 79, 0.8)";
+            }
+          }
+          return container;
+      }
+    });
+    return new followAirplaneButtonControl();
+  }
+
+  createPlayPauseButton() {
+    var playPauseButtonControl = leaflet.Control.extend({
+      options: {
+        position: 'topleft' 
+        //control position - allowed: 'topleft', 'topright', 'bottomleft', 'bottomright'
+      },
+     
+      onAdd: function (map) {
+          var container = MapPage.createContainerButton();
+
+          var iconPause = leaflet.DomUtil.create('i', 'fas fa-pause fa-3x');
+          iconPause.style.width     = '40px';
+          iconPause.style.height    = '40px';
+          iconPause.style.margin    = "0px 0px 0px 3px";
+          container.appendChild(iconPause);
+
+          var iconPlay = leaflet.DomUtil.create('i', 'fas fa-play fa-3x');
+          iconPlay.style.width     = '40px';
+          iconPlay.style.height    = '40px';
+          iconPlay.style.margin    = "0px 0px 0px 4px";
+          
+          container.onclick = function() {
+            gamePaused = !gamePaused;
+            if ( gamePaused ) {
+              container.removeChild(iconPause);
+              container.appendChild(iconPlay);
+              container.style.color = "rgba(0, 0, 0, 0.8)";
+            } else {
+              container.appendChild(iconPause);
+              container.removeChild(iconPlay);
+              container.style.color = "rgba(47, 79, 79, 0.8)";
+            }
+            //MapPage.sendMessageToXPlane("{PAUSE}");
+          }
+          return container;
+      }
+    });
+    return new playPauseButtonControl();
+  }
+
+  static sendMessageToXPlane(message) {
+    xPlaneWsServer.getWebSocket().send(message);
+  }
+
+  static createContainerButton() {
+    var container = leaflet.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+    container.style.backgroundColor = 'white';
+    container.style.width           = '33px';
+    container.style.height          = '33px';
+    container.style.paddingTop      = "3px";
+    container.style.paddingLeft     = "1px";
+    container.style.fontSize        = "8px";
+    container.style.margin          = "5px 0px 0px 5px";
+    container.style.color           = "rgba(47, 79, 79, 0.8)";
+    container.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
+    return container;
+  }
+
 }
+
