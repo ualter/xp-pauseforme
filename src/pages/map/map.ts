@@ -22,7 +22,8 @@ var   longitude;
 var   lastLat;
 var   lastLng;     
 var   lastBearing;
-var   avionMarker;    
+var   avionMarker;
+var   avionPopup;    
 var   followAirplane;
 var   gamePaused;
 var   xPlaneWsServer;
@@ -34,7 +35,7 @@ var AIRPLANE_ICON = leaflet.icon({
   shadowSize:   [AIRPLANE_ICON_WIDTH, AIRPLANE_ICON_HEIGHT],
   iconAnchor:   [AIRPLANE_ICON_ANCHOR_WIDTH, AIRPLANE_ICON_ANCHOR_HEIGHT],      // point of the icon which will correspond to marker's location
   shadowAnchor: [AIRPLANE_ICON_ANCHOR_WIDTH-5, AIRPLANE_ICON_ANCHOR_HEIGHT-4],  // the same for the shadow
-  popupAnchor:  [AIRPLANE_ICON_WIDTH, AIRPLANE_ICON_HEIGHT]                     // point from which the popup should open relative to the iconAnchor
+  popupAnchor:  [0, (AIRPLANE_ICON_HEIGHT/2) * -1]                                                          // point from which the popup should open relative to the iconAnchor
 });
 
 @Component({
@@ -124,6 +125,31 @@ export class MapPage {
     longitude = lng;
   }
 
+  static direction() {
+    if ( lastBearing >  10 && lastBearing < 80 ) {
+      return "NE";
+    } else
+    if ( lastBearing >= 80 && lastBearing <= 100 ) {
+      return "E";
+    } else
+    if ( lastBearing >= 101 && lastBearing < 170 ) {
+      return "SE";
+    } else
+    if ( lastBearing >= 170 && lastBearing <= 190 ) {
+      return "S";
+    } else
+    if ( lastBearing >= 191 && lastBearing < 210 ) {
+      return "SW";
+    } else
+    if ( lastBearing >= 210 && lastBearing <= 290 ) {
+      return "W";
+    } else
+    if ( lastBearing >= 291 && lastBearing <= 310 ) {
+      return "NW";
+    }
+  }
+
+
   static rotateMarker(bearing) {
     var newBearingForTransformCss = avionMarker._icon.style.transform + ' rotate(' + bearing +  'deg)';
     avionMarker._icon.style.transform = newBearingForTransformCss;
@@ -154,6 +180,9 @@ export class MapPage {
         leaflet.DomUtil.addClass(avionMarker._icon,'aviationClass');
         lastLat = resp.coords.latitude;
         lastLng = resp.coords.longitude;
+        
+        avionPopup = avionMarker.bindPopup("<b>Hello world!</b><br>I am a popup.");
+        avionPopup.setLatLng([latitude, longitude]);
 
         leaflet.marker([latitude, longitude]).addTo(map);
       }
@@ -195,7 +224,8 @@ export class MapPage {
 
     map = leaflet.map("map", {
           layers: [standardTile], 
-          minZoom: 3
+          minZoom: 3,
+          zoomControl:false
         }
     ).setView([41.5497, 2.0989], MAX_ZOOM);
     map.addControl(this.createGoToLocationButton());
@@ -267,8 +297,8 @@ export class MapPage {
     var heightAnchor = (AIRPLANE_ICON.options.iconSize[1] - ((AIRPLANE_ICON.options.iconSize[1] * 50)/100));
     AIRPLANE_ICON.options.iconAnchor[0]   = widthAnchor;
     AIRPLANE_ICON.options.iconAnchor[1]   = heightAnchor;
-    AIRPLANE_ICON.options.shadowAnchor[0] = widthAnchor  - 5;
-    AIRPLANE_ICON.options.shadowAnchor[1] = heightAnchor - 4;
+    AIRPLANE_ICON.options.shadowAnchor[0] = widthAnchor  - 15;
+    AIRPLANE_ICON.options.shadowAnchor[1] = heightAnchor - 14;
 
     avionMarker.setIcon(AIRPLANE_ICON);
     MapPage.rotateMarker(lastBearing);
