@@ -55,7 +55,8 @@ export class MapPage {
     public aviation: Aviation) {
 
     //this.subscription = this.xpWsSocket.connect("ws://10.253.163.97:9090/websocket/xplane/").subscribe(
-    this.subscription = this.xpWsSocket.connect("ws://localhost:9090/websocket/xplane/").subscribe(  
+    //this.subscription = this.xpWsSocket.connect("ws://localhost:9090/websocket/xplane/").subscribe(  
+      this.subscription = this.xpWsSocket.connect("ws://localhost:9002/").subscribe(  
       payload => this.onMessageReceived(payload),
       error => {
         this.utils.error('Oops', error)
@@ -85,15 +86,15 @@ export class MapPage {
       if ( (lastLat != undefined && lastLng != undefined) &&
            (lastLat != json.lat || lastLng != json.lng) ) {
 
-        bearing = this.aviation.bearing(json.lng,json.lat,lastLng,lastLat);
+        bearing = this.aviation.bearing(json.airplane.lng,json.airplane.lat,lastLng,lastLat);
 
-        lastLat     = json.lat;
-        lastLng     = json.lng;
+        lastLat     = json.airplane.lat;
+        lastLng     = json.airplane.lng;
         this.utils.trace("Bearing..: " + bearing);
       } 
 
       // Reposition the Airplane new give Lat/Lng
-      this.updateAirplanePosition(json.lat,json.lng, bearing);
+      this.updateAirplanePosition(json.airplane.lat,json.airplane.lng, bearing);
     } else {
       this.utils.warn("Received JSON message it is NOT OK..: \"" + message + "\" from " + origin);
     }
@@ -401,7 +402,7 @@ export class MapPage {
               container.removeChild(iconPlay);
               container.style.color = "rgba(47, 79, 79, 0.8)";
             }
-            //MapPage.sendMessageToXPlane("{PAUSE}");
+            MapPage.sendMessageToXPlane("{PAUSE}");
           }
           return container;
       }
