@@ -12,10 +12,8 @@ export class XpWebSocketService {
   }
 
   public connect(url: string) {
-    if (!this.subject) {
-      this.subject = this.create(url);
-      this.utils.info("Successfully connected: " + url);
-    } 
+    this.subject = this.create(url);
+    this.utils.info("Successfully connected: " + url);
     return this.subject;
   }
 

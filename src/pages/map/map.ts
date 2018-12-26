@@ -16,6 +16,11 @@ const AIRPLANE_ICON_HEIGHT        = 59;
 const AIRPLANE_ICON_ANCHOR_WIDTH  = AIRPLANE_ICON_WIDTH / 2;
 const AIRPLANE_ICON_ANCHOR_HEIGHT = AIRPLANE_ICON_HEIGHT - (AIRPLANE_ICON_HEIGHT - ((AIRPLANE_ICON_HEIGHT*60)/100));
 
+const WS_CONNECTING = 0;
+const WS_OPEN       = 1;
+const WS_CLOSING    = 2;
+const WS_CLOSED     = 3;
+
 var   map;            
 var   latitude;
 var   longitude;
@@ -26,7 +31,11 @@ var   avionMarker;
 var   avionPopup;    
 var   followAirplane;
 var   gamePaused;
-var   xPlaneWsServer;
+var   staticXPlaneWsServer;
+var   buttonPlayPause;
+var   buttonFollowAirplane;
+var   buttonGoToLocation;
+
 
 var AIRPLANE_ICON = leaflet.icon({
   iconUrl:      'assets/imgs/airplane-a320.png',
@@ -38,6 +47,8 @@ var AIRPLANE_ICON = leaflet.icon({
   popupAnchor:  [0, (AIRPLANE_ICON_HEIGHT/2) * -1]                                                          // point from which the popup should open relative to the iconAnchor
 });
 
+
+
 @Component({
   selector: 'page-map',
   templateUrl: 'map.html',
@@ -46,7 +57,9 @@ export class MapPage {
 
   @ViewChild('map') mapContainer: ElementRef;
   subscription = null;
-  
+
+  private connectButtonShow:boolean = true;
+
   constructor(public navCtrl: NavController, 
     public navParams: NavParams, 
     public geolocation: Geolocation, 
@@ -54,15 +67,7 @@ export class MapPage {
     public utils: Utils,
     public aviation: Aviation) {
 
-    //this.subscription = this.xpWsSocket.connect("ws://10.253.163.97:9090/websocket/xplane/").subscribe(
-    //this.subscription = this.xpWsSocket.connect("ws://localhost:9090/websocket/xplane/").subscribe(  
-      this.subscription = this.xpWsSocket.connect("ws://localhost:9002/").subscribe(  
-      payload => this.onMessageReceived(payload),
-      error => {
-        this.utils.error('Oops', error)
-      }
-    );
-    xPlaneWsServer = xpWsSocket;
+    staticXPlaneWsServer = xpWsSocket;
   }
 
   ngAfterViewInit(){
@@ -75,26 +80,51 @@ export class MapPage {
     var origin  = payload.origin;
     var message = payload.data;
 
+    if (this.connectButtonShow) {
+      this.connectButtonShow = false;
+    } 
+
     if (/^[\],:{}\s]*$/.test(message.replace(/\\["\\\/bfnrtu]/g, '@').
         replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']').
         replace(/(?:^|:|,)(?:\s*\[)+/g, ''))) {
+      
       var json = JSON.parse(message);
       this.utils.trace("JSON received: ",json);
 
-      // Bearing the Airplane new given Lat/Lng according with the last Lat/Lng
-      var bearing;
-      if ( (lastLat != undefined && lastLng != undefined) &&
-           (lastLat != json.lat || lastLng != json.lng) ) {
+      // Check if it is a airplane update communication
+      if ( message.indexOf('airplane') >= 0 ) {
+        // Bearing the Airplane new given Lat/Lng according with the last Lat/Lng
+        var bearing;
+        if ( (lastLat != undefined && lastLng != undefined) &&
+            (lastLat != json.lat || lastLng != json.lng) ) {
 
-        bearing = this.aviation.bearing(json.airplane.lng,json.airplane.lat,lastLng,lastLat);
+          bearing = this.aviation.bearing(json.airplane.lng,json.airplane.lat,lastLng,lastLat);
 
-        lastLat     = json.airplane.lat;
-        lastLng     = json.airplane.lng;
-        this.utils.trace("Bearing..: " + bearing);
-      } 
+          lastLat     = json.airplane.lat;
+          lastLng     = json.airplane.lng;
+          this.utils.trace("Bearing..: " + bearing);
+        } 
+        // Reposition the Airplane new give Lat/Lng
+        this.updateAirplanePosition(json.airplane.lat,json.airplane.lng, bearing);
+      }
+      else if ( message.indexOf('message') >= 0 ) {
+        if ( json.message == "PAUSED" ) {
+          var event = new Event('PAUSED');
+          buttonPlayPause.dispatchEvent(event);
+        } else
+        if ( json.message == "PLAY" ) {
+          var event = new Event('PLAY');
+          buttonPlayPause.dispatchEvent(event);
+        } else
+        if ( json.message == "STOPPED" ) {
+          var event = new Event('STOPPED');
+          buttonPlayPause.dispatchEvent(event);
+          this.connectButtonShow = true;
+        }
+      } else {
+        this.utils.trace("Message not processed: ",message);
+      }
 
-      // Reposition the Airplane new give Lat/Lng
-      this.updateAirplanePosition(json.airplane.lat,json.airplane.lng, bearing);
     } else {
       this.utils.warn("Received JSON message it is NOT OK..: \"" + message + "\" from " + origin);
     }
@@ -104,7 +134,9 @@ export class MapPage {
     this.utils.trace("Airplane new position (Lat/Lng): " + lat + ":" + lng);
 
     var newLatLng = new leaflet.LatLng(lat,lng);
-    avionMarker.setLatLng(newLatLng);
+    if (avionMarker != null) {
+      avionMarker.setLatLng(newLatLng);
+    }
 
     if ( bearing != undefined ) {
         // Adaptation for the current used icon
@@ -298,12 +330,13 @@ export class MapPage {
     var heightAnchor = (AIRPLANE_ICON.options.iconSize[1] - ((AIRPLANE_ICON.options.iconSize[1] * 50)/100));
     AIRPLANE_ICON.options.iconAnchor[0]   = widthAnchor;
     AIRPLANE_ICON.options.iconAnchor[1]   = heightAnchor;
-    AIRPLANE_ICON.options.shadowAnchor[0] = widthAnchor  - 15;
-    AIRPLANE_ICON.options.shadowAnchor[1] = heightAnchor - 14;
+    AIRPLANE_ICON.options.shadowAnchor[0] = widthAnchor  - 5;
+    AIRPLANE_ICON.options.shadowAnchor[1] = heightAnchor - 4;
 
-    avionMarker.setIcon(AIRPLANE_ICON);
-    MapPage.rotateMarker(lastBearing);
-
+    if ( avionMarker != null ) {
+      avionMarker.setIcon(AIRPLANE_ICON);
+      MapPage.rotateMarker(lastBearing);
+    }
     if ( followAirplane ) {
       map.panTo(leaflet.latLng(latitude,longitude));
     }
@@ -331,6 +364,7 @@ export class MapPage {
             map.flyTo({lon: longitude, lat: latitude}, MAX_ZOOM /*- 4*/, ZOOM_PAN_OPTIONS);
             container.style.color = "rgba(47, 79, 79, 0.8)";
           }
+          buttonGoToLocation = container;
           return container;
       }
     });
@@ -358,12 +392,12 @@ export class MapPage {
             followAirplane = !followAirplane;
             if ( followAirplane ) {
               container.style.color = "rgba(0, 0, 0, 0.8)";
-              //map.panTo([latitude,longitude]);
               map.flyTo({lon: longitude, lat: latitude}, map.getZoom(), ZOOM_PAN_OPTIONS);
             } else {
               container.style.color = "rgba(47, 79, 79, 0.8)";
             }
           }
+          buttonFollowAirplane = container;
           return container;
       }
     });
@@ -392,18 +426,35 @@ export class MapPage {
           iconPlay.style.margin    = "0px 0px 0px 4px";
           
           container.onclick = function() {
-            gamePaused = !gamePaused;
-            if ( gamePaused ) {
-              container.removeChild(iconPause);
-              container.appendChild(iconPlay);
-              container.style.color = "rgba(0, 0, 0, 0.8)";
-            } else {
-              container.appendChild(iconPause);
-              container.removeChild(iconPlay);
-              container.style.color = "rgba(47, 79, 79, 0.8)";
+            if ( MapPage.getWSState() == 1 ) {
+              gamePaused = !gamePaused;
+              if ( gamePaused ) {
+                if (container.contains(iconPause)) container.removeChild(iconPause);
+                container.appendChild(iconPlay);
+                container.style.color = "rgba(0, 0, 0, 0.8)";
+              } else {
+                container.appendChild(iconPause);
+                if (container.contains(iconPlay)) container.removeChild(iconPlay);
+                container.style.color = "rgba(47, 79, 79, 0.8)";
+              }
             }
             MapPage.sendMessageToXPlane("{PAUSE}");
           }
+
+          container.addEventListener("PAUSED", function(){
+            if (container.contains(iconPause)) container.removeChild(iconPause);
+            container.appendChild(iconPlay);
+            container.style.color = "rgba(0, 0, 0, 0.8)";
+            console.log("X-Plane was PAUSED!");
+          });
+          container.addEventListener("PLAY", function(){
+             container.appendChild(iconPause);
+             if (container.contains(iconPlay)) container.removeChild(iconPlay);
+             container.style.color = "rgba(47, 79, 79, 0.8)";
+             console.log("X-Plane is in PLAY mode now!");
+          });
+
+          buttonPlayPause = container;
           return container;
       }
     });
@@ -411,7 +462,16 @@ export class MapPage {
   }
 
   static sendMessageToXPlane(message) {
-    xPlaneWsServer.getWebSocket().send(message);
+    if ( staticXPlaneWsServer.getWebSocket().readyState == WS_CLOSED ) {
+      alert("Connection closed!");
+    } else {
+      console.log(staticXPlaneWsServer.getWebSocket().readyState);
+      staticXPlaneWsServer.getWebSocket().send(message);
+    }
+  }
+
+  static getWSState() {
+    return staticXPlaneWsServer.getWebSocket().readyState;
   }
 
   static createContainerButton() {
@@ -426,6 +486,23 @@ export class MapPage {
     container.style.color           = "rgba(47, 79, 79, 0.8)";
     container.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
     return container;
+  }
+
+  connect() {
+    this.connectXPlane();
+    this.positionMapWithUserLocation();
+    this.utils.trace("State...: " + this.xpWsSocket.getWebSocket().readyState);     
+  }
+
+  connectXPlane() {
+    //this.subscription = this.xpWsSocket.connect("ws://10.253.163.97:9090/websocket/xplane/").subscribe(
+    //this.subscription = this.xpWsSocket.connect("ws://localhost:9090/websocket/xplane/").subscribe(  
+    this.subscription = this.xpWsSocket.connect("ws://localhost:9002/").subscribe(  
+        payload => this.onMessageReceived(payload),
+        error => {
+          this.utils.error('Oops', error)
+        }
+    );
   }
 
 }

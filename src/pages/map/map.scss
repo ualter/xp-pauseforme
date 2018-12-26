@@ -1,3 +1,32 @@
 page-map {
 
+   
+
 }
+
+#refreshButton{
+    display: flex;
+    align-items: center;
+    position: relative;
+    top: 31px;
+    left: 55px;
+    width: 128px;
+    height: 50px;
+    font-weight: 500;
+    border-width: 1px 1px 1px 1px;
+    border-radius: 5px;
+    border-color: gray;
+    border-style: solid;
+    opacity: 0.8;
+    text-align: center;
+    z-index: 500;
+    /*
+    background-color: blue;
+    color: white;
+    */
+}
+#refreshButton:hover{
+    opacity: 1;
+    cursor: pointer;
+}
+
