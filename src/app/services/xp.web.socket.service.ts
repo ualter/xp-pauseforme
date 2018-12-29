@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import * as Rx from 'rxjs/Rx';
-import { Utils } from './utils';
+import { Utils } from './Utils';
 
 @Injectable()
 export class XpWebSocketService {
@@ -13,7 +13,6 @@ export class XpWebSocketService {
 
   public connect(url: string) {
     this.subject = this.create(url);
-    this.utils.info("Successfully connected: " + url);
     return this.subject;
   }
 
@@ -33,10 +32,17 @@ export class XpWebSocketService {
       next: (data: Object) => {
         if (this.ws.readyState === WebSocket.OPEN) {
           this.ws.send(JSON.stringify(data));
+        } else {
+          this.utils.info("WS readyState ==" + this.ws.readyState);
         }
-      }/*,
-      //error: (data: object) => {
-      }*/
+      },
+      error: (data: Object) => {
+        this.utils.error("ERROR..:" + data);
+        return this.ws.error;
+      },
+      complete: (data: Object) => {
+        this.utils.info("CLOSED..:" + data);
+      }
     }
     return Rx.Subject.create(observer, observable);
   }

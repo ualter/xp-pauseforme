@@ -42,6 +42,15 @@ export class Utils {
         return year + "/" + this.shortMonthNames[monthIndex] + "/" + day;
     }
 
+    isJsonMessage(_message) {
+        if (/^[\],:{}\s]*$/.test(_message.replace(/\\["\\\/bfnrtu]/g, '@').
+            replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']').
+            replace(/(?:^|:|,)(?:\s*\[)+/g, ''))) {
+          return true;
+        }
+        return false;
+    }
+
     private writeLog(msg, logLevel: LogLevel, _object?: object) {
         var logMsg = "[" + 
                      LogLevel[logLevel] + 

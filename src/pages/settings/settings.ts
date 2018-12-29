@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { NavController, NavParams } from 'ionic-angular';
+import { DataService } from '../../app/services/DataService';
 
 @Component({
   selector: 'page-settings',
@@ -7,13 +8,45 @@ import { NavController, NavParams } from 'ionic-angular';
 })
 export class SettingsPage {
 
-  ipServer: string = "http://localhost:3001";
+  xplaneAddress: string = "localhost";
+  xplanePort: string    = "9002";
+  name: string          = "UALTER Desktop";
 
-  constructor(public navCtrl: NavController, public navParams: NavParams) {
+  constructor(
+    public navCtrl: NavController, 
+    public navParams: NavParams,
+    public dataService: DataService) {
+
+    this.dataService.currentDataSettings.subscribe(dataSettings => {
+      this.xplaneAddress = dataSettings.xplaneAddress;
+      this.xplanePort = dataSettings.xplanePort;
+      this.name = dataSettings.name; 
+    });
   }
 
   ionViewDidLoad() {
-    console.log('ionViewDidLoad SettingsPage');
+  }
+
+  saveSettings() {
+    var notify: boolean = false;
+
+    if ( this.xplaneAddress != this.dataService.dataSettings.xplaneAddress ) {
+      this.dataService.changeSettingsXplaneAddress(this.xplaneAddress);
+      notify = true;
+    }
+    if ( this.xplanePort != this.dataService.dataSettings.xplanePort ) {
+      this.dataService.changeSettingsXplanePort(this.xplanePort);
+      notify = true;
+    }
+    if ( this.name != this.dataService.dataSettings.name ) {
+      this.dataService.changeSettingsName(this.name);
+      notify = true;
+    }
+    
+    if (notify) {
+      this.dataService.saveDataSettings();
+      this.dataService.notifyDataSettingsSubscribers();
+    }
   }
 
 }

@@ -5,17 +5,57 @@
   Ionic pages and navigation.
 -->
 <ion-header>
-
   <ion-navbar>
-    <ion-title>Settings</ion-title>
+      <ion-title>Settings</ion-title>
   </ion-navbar>
-
 </ion-header>
 
 
-<ion-content padding>
-  <ion-item>
-    <ion-label color="primary" floating>IP Server:</ion-label>
-    <ion-input type="text" [(ngModel)]="ipServer"></ion-input>
-  </ion-item>
-</ion-content>
+<ion-content class="outer-content">
+
+    <ion-list>
+      <ion-list-header>
+        <ion-icon item-start name="plane" color="primary"></ion-icon>
+        X-Plane Communication
+      </ion-list-header>
+  
+      <ion-item-group>
+        <ion-item>
+          <ion-icon name="link" item-start color="primary"></ion-icon>
+          <ion-label>Address:</ion-label>
+          <ion-input type="text" placeholder="127.0.0.1" [(ngModel)]="xplaneAddress" color="primary"></ion-input>
+        </ion-item>
+  
+        <ion-item>
+          <ion-icon name="link" item-start color="primary"></ion-icon>
+          <ion-label>Port:</ion-label>
+          <ion-input type="text" placeholder="9002" [(ngModel)]="xplanePort"></ion-input>
+        </ion-item>
+      </ion-item-group>
+    </ion-list>
+  
+    <ion-list>
+      <ion-list-header>
+        <ion-icon item-start name="phone-portrait" color="primary"></ion-icon>
+        Myself
+      </ion-list-header>
+      <ion-item>
+          <ion-icon name="person" item-start color="primary"></ion-icon>
+          <ion-label>Name:</ion-label>
+          <ion-input type="text" placeholder="9002" [(ngModel)]="name"></ion-input>
+        </ion-item>
+    </ion-list>
+  
+    <ion-row>
+        <ion-col width-100 style="text-align: center">
+            <button ion-button Large (click)="saveSettings()">
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Save
+                &nbsp;
+                <ion-icon name="create" color="light"></ion-icon>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            </button>
+        </ion-col>
+    </ion-row>
+  
+  </ion-content>
+

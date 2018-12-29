@@ -7,11 +7,12 @@ page-map {
 #refreshButton{
     display: flex;
     align-items: center;
-    position: relative;
-    top: 31px;
-    left: 55px;
-    width: 128px;
+    position: absolute;
+    top: 80%;
+    left: 50%;
+    width: 195px;
     height: 50px;
+    transform: translate(-50%, -50%);
     font-weight: 500;
     border-width: 1px 1px 1px 1px;
     border-radius: 5px;

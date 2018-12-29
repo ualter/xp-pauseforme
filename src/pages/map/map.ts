@@ -1,13 +1,14 @@
 import { Component, ViewChild, ElementRef } from '@angular/core';
 import { NavController, NavParams } from 'ionic-angular';
 import { Geolocation } from '@ionic-native/geolocation'
-import { XpWebSocketService }  from '../../app/services/xp.web.socket.service';
+import { XpWebSocketService }  from '../../app/services/Xp.web.socket.service';
 import * as Rx from 'rxjs/Rx';
 import leaflet from 'leaflet';
-import { Utils } from '../../app/services/utils';
-import { Aviation } from '../../app/services/aviation';
+import { Utils } from '../../app/services/Utils';
+import { Aviation } from '../../app/services/Aviation';
 import * as $ from "jquery";
 import { last } from 'rxjs/operator/last';
+import { DataService } from '../../app/services/DataService';
 
 const MAX_ZOOM                    = 15;
 const ZOOM_PAN_OPTIONS            = {animate: true, duration: 0.25, easeLinearity: 1.0, noMoveStart: false}; /*{animate: true, duration: 3.5, easeLinearity: 1.0, noMoveStart: false}*/
@@ -21,6 +22,7 @@ const WS_OPEN       = 1;
 const WS_CLOSING    = 2;
 const WS_CLOSED     = 3;
 
+var   wsURL = "ws://localhost:9002/";
 var   map;            
 var   latitude;
 var   longitude;
@@ -59,8 +61,15 @@ export class MapPage {
   subscription = null;
 
   private connectButtonShow:boolean = true;
+  private xplaneAddress: string;
+  private xplanePort: string;
+  private name: string;
 
-  constructor(public navCtrl: NavController, 
+  private notifyNameChange: boolean = false;
+
+  constructor(
+    public dataService: DataService,
+    public navCtrl: NavController, 
     public navParams: NavParams, 
     public geolocation: Geolocation, 
     public xpWsSocket: XpWebSocketService, 
@@ -68,8 +77,18 @@ export class MapPage {
     public aviation: Aviation) {
 
     staticXPlaneWsServer = xpWsSocket;
+
+    this.dataService.currentDataSettings.subscribe(dataSettings => {
+      this.xplaneAddress = dataSettings.xplaneAddress;
+      this.xplanePort = dataSettings.xplanePort;
+      this.name = dataSettings.name; 
+      this.notifyNameChange = true;
+    });
   }
 
+  ngOnInit() {
+    
+  }
   ngAfterViewInit(){
     $(document).ready(function(){
       //console.log('JQuery is working!!');
@@ -82,12 +101,13 @@ export class MapPage {
 
     if (this.connectButtonShow) {
       this.connectButtonShow = false;
+    }
+    if (this.notifyNameChange) {
+      MapPage.sendMessageToXPlane("{IDENTICATION}," + this.name);
+      this.utils.trace("Identification sent to X-Plane: " + this.name);
     } 
-
-    if (/^[\],:{}\s]*$/.test(message.replace(/\\["\\\/bfnrtu]/g, '@').
-        replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']').
-        replace(/(?:^|:|,)(?:\s*\[)+/g, ''))) {
-      
+    
+    if ( this.utils.isJsonMessage(message) ) {
       var json = JSON.parse(message);
       this.utils.trace("JSON received: ",json);
 
@@ -124,14 +144,13 @@ export class MapPage {
       } else {
         this.utils.trace("Message not processed: ",message);
       }
-
     } else {
       this.utils.warn("Received JSON message it is NOT OK..: \"" + message + "\" from " + origin);
     }
   }
 
   updateAirplanePosition(lat, lng, bearing?) {
-    this.utils.trace("Airplane new position (Lat/Lng): " + lat + ":" + lng);
+    this.utils.info("Airplane new position (Lat/Lng): " + lat + ":" + lng);
 
     var newLatLng = new leaflet.LatLng(lat,lng);
     if (avionMarker != null) {
@@ -208,7 +227,7 @@ export class MapPage {
       longitude = resp.coords.longitude;
       var latLng = leaflet.latLng(resp.coords.latitude, resp.coords.longitude);
       if ( avionMarker == undefined ) {
-        this.utils.trace("Airplaned added to " + latitude + ":" + longitude);
+        this.utils.info("Airplaned added to " + latitude + ":" + longitude);
         avionMarker = leaflet.marker([latitude, longitude], {icon: AIRPLANE_ICON}).addTo(map);
         leaflet.DomUtil.addClass(avionMarker._icon,'aviationClass');
         lastLat = resp.coords.latitude;
@@ -223,7 +242,6 @@ export class MapPage {
       map.flyTo(latLng, MAX_ZOOM - 4, ZOOM_PAN_OPTIONS);      
     }).catch((error) => {
        this.utils.error('Error getting location: ' + error.message);
-       console.log('Error getting location', error.message);
     });
 
     let watch = this.geolocation.watchPosition();
@@ -340,7 +358,6 @@ export class MapPage {
     if ( followAirplane ) {
       map.panTo(leaflet.latLng(latitude,longitude));
     }
-    console.log(zoom);
   }
 
   // Localization Button Control Creation for Leaflet maps
@@ -445,13 +462,13 @@ export class MapPage {
             if (container.contains(iconPause)) container.removeChild(iconPause);
             container.appendChild(iconPlay);
             container.style.color = "rgba(0, 0, 0, 0.8)";
-            console.log("X-Plane was PAUSED!");
+            //this.utils.info("X-Plane was PAUSED!");
           });
           container.addEventListener("PLAY", function(){
              container.appendChild(iconPause);
              if (container.contains(iconPlay)) container.removeChild(iconPlay);
              container.style.color = "rgba(47, 79, 79, 0.8)";
-             console.log("X-Plane is in PLAY mode now!");
+             //this.utils.info("X-Plane is in PLAY mode now!");
           });
 
           buttonPlayPause = container;
@@ -465,7 +482,7 @@ export class MapPage {
     if ( staticXPlaneWsServer.getWebSocket().readyState == WS_CLOSED ) {
       alert("Connection closed!");
     } else {
-      console.log(staticXPlaneWsServer.getWebSocket().readyState);
+      console.log("Sent " + message + " message to X-Plane");
       staticXPlaneWsServer.getWebSocket().send(message);
     }
   }
@@ -489,15 +506,15 @@ export class MapPage {
   }
 
   connect() {
+    this.utils.trace("Attempting connect to WS at " + wsURL);
     this.connectXPlane();
     this.positionMapWithUserLocation();
-    this.utils.trace("State...: " + this.xpWsSocket.getWebSocket().readyState);     
   }
 
   connectXPlane() {
     //this.subscription = this.xpWsSocket.connect("ws://10.253.163.97:9090/websocket/xplane/").subscribe(
     //this.subscription = this.xpWsSocket.connect("ws://localhost:9090/websocket/xplane/").subscribe(  
-    this.subscription = this.xpWsSocket.connect("ws://localhost:9002/").subscribe(  
+    this.subscription = this.xpWsSocket.connect(wsURL).subscribe(
         payload => this.onMessageReceived(payload),
         error => {
           this.utils.error('Oops', error)
