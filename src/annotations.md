@@ -19,3 +19,6 @@ $ ionic cordova run browser
 $ ionic cordova run ios -- --buildFlag="-UseModernBuildSystem=0"
 # Just build...
 $ ionic cordova build ios -- --buildFlag="-UseModernBuildSystem=0"
+
+# Animations
+$ npm install --save web-animations-js

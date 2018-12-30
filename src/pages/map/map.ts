@@ -9,6 +9,7 @@ import { Aviation } from '../../app/services/Aviation';
 import * as $ from "jquery";
 import { last } from 'rxjs/operator/last';
 import { DataService } from '../../app/services/DataService';
+import { trigger, state, style, animate, transition } from '@angular/animations';
 
 const MAX_ZOOM                    = 15;
 const ZOOM_PAN_OPTIONS            = {animate: true, duration: 0.25, easeLinearity: 1.0, noMoveStart: false}; /*{animate: true, duration: 3.5, easeLinearity: 1.0, noMoveStart: false}*/
@@ -22,21 +23,41 @@ const WS_OPEN       = 1;
 const WS_CLOSING    = 2;
 const WS_CLOSED     = 3;
 
-var   wsURL = "ws://localhost:9002/";
-var   map;            
-var   latitude;
-var   longitude;
-var   lastLat;
-var   lastLng;     
-var   lastBearing;
-var   avionMarker;
-var   avionPopup;    
-var   followAirplane;
-var   gamePaused;
-var   staticXPlaneWsServer;
-var   buttonPlayPause;
-var   buttonFollowAirplane;
-var   buttonGoToLocation;
+var mbAttr         = '&copy;<a href="https://www.openstreetmap.org/">OpenStreetMap</a>';
+var mbUrl          = 'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw';
+var grayscaleTile  = leaflet.tileLayer(mbUrl, {id: 'mapbox.light', attribution: mbAttr});
+var streetsTile    = leaflet.tileLayer(mbUrl, {id: 'mapbox.streets', attribution: mbAttr});
+var standardTile   = leaflet.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attributions: mbAttr, maxZoom: MAX_ZOOM});    
+var terrainTile    = leaflet.tileLayer('http://c.tile.stamen.com/terrain/{z}/{x}/{y}.jpg', {attributions: mbAttr, maxZoom: MAX_ZOOM});    
+var darkMatterTile = leaflet.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png', {attributions: mbAttr, maxZoom: MAX_ZOOM});
+var imaginaryTile  = leaflet.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {attributions: mbAttr, maxZoom: MAX_ZOOM});   
+var baseLayers = {
+  "Grayscale": grayscaleTile,
+  "Streets":   streetsTile,
+  "Terrain":   terrainTile,
+  "Dark":      darkMatterTile,
+  "Imaginary": imaginaryTile,
+  "Default":   standardTile
+};
+
+//var wsURL = "ws://localhost:9002/";
+var wsURL = "ws://192.168.0.30:9002/";
+var map;            
+var latitude;
+var longitude;
+var lastLat;
+var lastLng;     
+var lastBearing;
+var avionMarker;
+var avionPopup;    
+var followAirplane;
+var gamePaused;
+var staticXPlaneWsServer;
+var mapLoaded = false;
+var buttonPlayPause;
+var buttonFollowAirplane;
+var buttonGoToLocation;
+var threadAttempConnection;
 
 
 var AIRPLANE_ICON = leaflet.icon({
@@ -54,13 +75,48 @@ var AIRPLANE_ICON = leaflet.icon({
 @Component({
   selector: 'page-map',
   templateUrl: 'map.html',
+  animations: [
+    trigger('visibilityMessageBar', [
+      state('shown', style({ opacity: 0.8 })),
+      state('hidden', style({ opacity: 0 })),
+      transition('* => *', animate('1300ms'))
+    ]),
+    trigger('colorChanged', [
+      state('blue', style({ 'background-color': 'blue' })),
+      state('red', style({ 'background-color': 'red' })),
+      transition('* => *', animate('10ms'))
+    ]),
+    trigger('visibilityButtonConnectMe', [
+      state('shown', style({ opacity: 1 })),
+      state('hidden', style({ opacity: 0 })),
+      transition('* => *', animate('1300ms'))
+    ]),
+    trigger('visibilityContacting', [
+      state('shown', style({ opacity: 1 })),
+      state('hidden', style({ opacity: 0 })),
+      transition('* => *', animate('1300ms'))
+    ]),
+  ]
 })
 export class MapPage {
 
   @ViewChild('map') mapContainer: ElementRef;
   subscription = null;
 
+  visibilityMessageBar:      string = '';
+  visibilityButtonConnectMe: string = '';
+  visibilityContacting:      string = 'hidden';
+
+  messageBarIcon:       string = 'thunderstorm';
+  messageBarText:       string = "Disconnected";
+  messageBarColorIcon:  string = "";
+  messageBarColor:      string = "red";
+
+  private isConnectedWithXPlane:boolean = false;
+
+  private connectMeState:boolean = false;
   private connectButtonShow:boolean = true;
+  
   private xplaneAddress: string;
   private xplanePort: string;
   private name: string;
@@ -100,16 +156,18 @@ export class MapPage {
     var message = payload.data;
 
     if (this.connectButtonShow) {
-      this.connectButtonShow = false;
+      this.changeStateToConnected();
     }
+
     if (this.notifyNameChange) {
       MapPage.sendMessageToXPlane("{IDENTICATION}," + this.name);
       this.utils.trace("Identification sent to X-Plane: " + this.name);
+      this.notifyNameChange = false;
     } 
     
     if ( this.utils.isJsonMessage(message) ) {
       var json = JSON.parse(message);
-      this.utils.trace("JSON received: ",json);
+      //this.utils.trace("JSON received: ",json);
 
       // Check if it is a airplane update communication
       if ( message.indexOf('airplane') >= 0 ) {
@@ -122,7 +180,6 @@ export class MapPage {
 
           lastLat     = json.airplane.lat;
           lastLng     = json.airplane.lng;
-          this.utils.trace("Bearing..: " + bearing);
         } 
         // Reposition the Airplane new give Lat/Lng
         this.updateAirplanePosition(json.airplane.lat,json.airplane.lng, bearing);
@@ -139,7 +196,7 @@ export class MapPage {
         if ( json.message == "STOPPED" ) {
           var event = new Event('STOPPED');
           buttonPlayPause.dispatchEvent(event);
-          this.connectButtonShow = true;
+          this.changeStateToDisconnected();
         }
       } else {
         this.utils.trace("Message not processed: ",message);
@@ -150,7 +207,7 @@ export class MapPage {
   }
 
   updateAirplanePosition(lat, lng, bearing?) {
-    this.utils.info("Airplane new position (Lat/Lng): " + lat + ":" + lng);
+    //this.utils.trace("Airplane new position (Lat/Lng): " + lat + ":" + lng);
 
     var newLatLng = new leaflet.LatLng(lat,lng);
     if (avionMarker != null) {
@@ -222,24 +279,26 @@ export class MapPage {
 
   positionMapWithUserLocation() {
     this.geolocation.getCurrentPosition().then((resp) => {
-      this.utils.trace("LatLng: " + resp.coords.latitude + ":" + resp.coords.longitude);
-      latitude  = resp.coords.latitude;
-      longitude = resp.coords.longitude;
-      var latLng = leaflet.latLng(resp.coords.latitude, resp.coords.longitude);
-      if ( avionMarker == undefined ) {
-        this.utils.info("Airplaned added to " + latitude + ":" + longitude);
-        avionMarker = leaflet.marker([latitude, longitude], {icon: AIRPLANE_ICON}).addTo(map);
-        leaflet.DomUtil.addClass(avionMarker._icon,'aviationClass');
-        lastLat = resp.coords.latitude;
-        lastLng = resp.coords.longitude;
-        
-        avionPopup = avionMarker.bindPopup("<b>Hello world!</b><br>I am a popup.");
-        avionPopup.setLatLng([latitude, longitude]);
+      console.log("resp=" + resp);
+      if (resp) {
+        this.utils.trace("LatLng: " + resp.coords.latitude + ":" + resp.coords.longitude);
+        latitude  = resp.coords.latitude;
+        longitude = resp.coords.longitude;
+        var latLng = leaflet.latLng(resp.coords.latitude, resp.coords.longitude);
+        if ( avionMarker == undefined ) {
+          this.utils.info("Airplaned added to " + latitude + ":" + longitude);
+          avionMarker = leaflet.marker([latitude, longitude], {icon: AIRPLANE_ICON}).addTo(map);
+          leaflet.DomUtil.addClass(avionMarker._icon,'aviationClass');
+          lastLat = resp.coords.latitude;
+          lastLng = resp.coords.longitude;
+          
+          avionPopup = avionMarker.bindPopup("<b>Hello world!</b><br>I am a popup.");
+          avionPopup.setLatLng([latitude, longitude]);
 
-        leaflet.marker([latitude, longitude]).addTo(map);
-      }
-
-      map.flyTo(latLng, MAX_ZOOM - 4, ZOOM_PAN_OPTIONS);      
+          leaflet.marker([latitude, longitude]).addTo(map);
+        }
+        map.flyTo(latLng, MAX_ZOOM - 4, ZOOM_PAN_OPTIONS);
+      }      
     }).catch((error) => {
        this.utils.error('Error getting location: ' + error.message);
     });
@@ -254,37 +313,21 @@ export class MapPage {
   }
 
   loadMap() {
-    var mbAttr         = '&copy;<a href="https://www.openstreetmap.org/">OpenStreetMap</a>';
-    var mbUrl          = 'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw';
+    //if (!mapLoaded) {
+      map = leaflet.map("map", {
+            layers: [standardTile], 
+            minZoom: 3,
+            zoomControl:false
+          }
+      ).setView([41.5497, 2.0989], MAX_ZOOM);
+      map.addControl(this.createGoToLocationButton());
+      map.addControl(this.createFollowAirplaneButton());
+      map.addControl(this.createPlayPauseButton());
+      leaflet.control.layers(baseLayers).addTo(map);
 
-    var grayscaleTile  = leaflet.tileLayer(mbUrl, {id: 'mapbox.light', attribution: mbAttr});
-    var streetsTile    = leaflet.tileLayer(mbUrl, {id: 'mapbox.streets', attribution: mbAttr});
-    var standardTile   = leaflet.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attributions: mbAttr, maxZoom: MAX_ZOOM});    
-    var terrainTile    = leaflet.tileLayer('http://c.tile.stamen.com/terrain/{z}/{x}/{y}.jpg', {attributions: mbAttr, maxZoom: MAX_ZOOM});    
-    var darkMatterTile = leaflet.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png', {attributions: mbAttr, maxZoom: MAX_ZOOM});
-    var imaginaryTile  = leaflet.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {attributions: mbAttr, maxZoom: MAX_ZOOM});    
-
-    var baseLayers = {
-      "Grayscale": grayscaleTile,
-      "Streets":   streetsTile,
-      "Terrain":   terrainTile,
-      "Dark":      darkMatterTile,
-      "Imaginary": imaginaryTile,
-      "Default":   standardTile
-    };
-
-    map = leaflet.map("map", {
-          layers: [standardTile], 
-          minZoom: 3,
-          zoomControl:false
-        }
-    ).setView([41.5497, 2.0989], MAX_ZOOM);
-    map.addControl(this.createGoToLocationButton());
-    map.addControl(this.createFollowAirplaneButton());
-    map.addControl(this.createPlayPauseButton());
-    leaflet.control.layers(baseLayers).addTo(map);
-
-    map.on('zoomend', this.zoomListener);
+      map.on('zoomend', this.zoomListener);
+      mapLoaded = true;
+    //}
   }
 
   zoomListener() {
@@ -506,7 +549,7 @@ export class MapPage {
   }
 
   connect() {
-    this.utils.trace("Attempting connect to WS at " + wsURL);
+    this.utils.trace("Attempting connect to X-Plane at " + wsURL);
     this.connectXPlane();
     this.positionMapWithUserLocation();
   }
@@ -515,11 +558,64 @@ export class MapPage {
     //this.subscription = this.xpWsSocket.connect("ws://10.253.163.97:9090/websocket/xplane/").subscribe(
     //this.subscription = this.xpWsSocket.connect("ws://localhost:9090/websocket/xplane/").subscribe(  
     this.subscription = this.xpWsSocket.connect(wsURL).subscribe(
-        payload => this.onMessageReceived(payload),
+        payload => {
+          this.onMessageReceived(payload);
+          this.hideContactingXPlaneImg();
+          clearInterval(threadAttempConnection);
+        },
         error => {
           this.utils.error('Oops', error)
         }
     );
+  }
+
+  hideContactingXPlaneImg() {
+    this.visibilityContacting = "hidden"; 
+  }
+
+  changeStateToConnected() {
+    this.isConnectedWithXPlane  = true;
+    this.messageBarIcon         = "sunny";
+    this.messageBarText         = "Connected";
+    this.messageBarColorIcon    = "secondary";
+    this.messageBarColor        = "blue";
+    setTimeout(() => {   
+      this.visibilityMessageBar      = "hidden";
+      this.visibilityButtonConnectMe = "hidden"; 
+      this.visibilityContacting      = "hidden"; 
+    },1300);
+    
+  }
+
+  changeStateToDisconnected() {
+    this.connectMeState         = false;
+    this.isConnectedWithXPlane  = false;
+    this.messageBarIcon         = "thunderstorm";
+    this.messageBarText         = "Disconnected";
+    this.messageBarColorIcon    = "";
+    
+    setTimeout(() => {  
+      this.visibilityMessageBar      = "shown";
+      this.visibilityButtonConnectMe = "shown";
+      this.messageBarColor           = "red";
+    },1300);
+  }
+
+  
+  updateConnectMeState(event) {
+    this.utils.trace("Connect Me State change to:" + event);
+    if (event == true) {
+      this.visibilityContacting = "shown"; 
+      threadAttempConnection = setInterval(() => {
+        this.connect();
+      },2000);
+    } else {
+      if (threadAttempConnection) {
+        this.utils.trace("Stop attemping to contact X-Plane");
+        this.hideContactingXPlaneImg();
+        clearInterval(threadAttempConnection);
+      }
+    }
   }
 
 }
