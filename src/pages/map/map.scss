@@ -77,14 +77,14 @@ page-map {
     font-weight: 500;
     border-width: 1px 1px 1px 1px;
     border-radius: 8px;
-    border-color: gray;
+    border-color: #505050;
     border-style: solid;
     opacity: 0.8;
     z-index: 500;
-    //background-color: red;
     color: white;
     font-family: inherit;
     font-size: 16px;
+    box-shadow: 6px 6px 10px #505050;
 }
 #messageBar:hover{
     opacity: 1;

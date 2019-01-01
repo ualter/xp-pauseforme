@@ -12,7 +12,7 @@ export enum LogLevel {
 @Injectable()
 export class Utils {
 
-    level: LogLevel = LogLevel.TRACE;
+    level: LogLevel = LogLevel.INFO;
 
     monthNames = [
         "January", "February", "March",

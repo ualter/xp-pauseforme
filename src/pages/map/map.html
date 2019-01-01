@@ -10,19 +10,6 @@
 
 <ion-content  allow="geolocation">
   <div id="map" style="width: 100%;height: 100%;">
-      
-    <!--  
-    <button ion-button color="primary" id="buttonConnect" (click)="connect()">Connect</button>
-    <div *ngIf="connectButtonShow"><button ion-button color="danger" id="refreshButton" (click)="connect()">Connect</button></div>
-
-    [@visibilityChanged]="visibility" 
-    
-    *ngIf="!isConnectedWithXPlane"
-
-    *ngIf="connectMeState && !isConnectedWithXPlane"
-
-     -->
-
     <div class="showOnMap" id="labelConnecting" [@visibilityContacting]="visibilityContacting">
       Contacting X-Plane...
     </div>
