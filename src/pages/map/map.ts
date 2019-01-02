@@ -43,7 +43,7 @@ var baseLayers = {
 
 //var wsURL = "ws://localhost:9002/";
 var fadeInOut = 500;
-var wsURL = "ws://192.168.0.30:9002/";
+var wsURL = "ws://localhost:9002/";
 var map;            
 var latitude;
 var longitude;
@@ -61,6 +61,9 @@ var threadAttempConnection;
 var identificationName;
 var staticXPlaneWsServer;
 var staticAlertController;
+var attempingConnectTimes = 0;
+
+const RETRIES_ATTEMPTING_CONNECT = 10;
 
 enum State {
   DISCONNECTED = 0,
@@ -146,6 +149,8 @@ export class MapPage {
       this.xplaneAddress = dataSettings.xplaneAddress;
       this.xplanePort = dataSettings.xplanePort;
       identificationName = dataSettings.name; 
+
+      wsURL = "ws://" + this.xplaneAddress + ":" + this.xplanePort + "/";
     });
   }
 
@@ -422,6 +427,16 @@ export class MapPage {
           
           container.onclick = function() {
             container.style.color = "rgba(0, 0, 0, 0.8)";
+
+            if ( isNaN(longitude) ) {
+              MapPage.myself.utils.warn("Longitude were NaN, set to 41.5497");
+              longitude = 41.5497;
+            }
+            if ( isNaN(latitude) ) {
+              MapPage.myself.utils.warn("Latitude were NaN, set to 2.0989");
+              latitude = 2.0989;
+            }
+            
             map.flyTo({lon: longitude, lat: latitude}, MAX_ZOOM /*- 4*/, ZOOM_PAN_OPTIONS);
             container.style.color = "rgba(47, 79, 79, 0.8)";
           }
@@ -453,6 +468,16 @@ export class MapPage {
             followAirplane = !followAirplane;
             if ( followAirplane ) {
               container.style.color = "rgba(0, 0, 0, 0.8)";
+
+              if ( isNaN(longitude) ) {
+                MapPage.myself.utils.warn("Longitude were NaN, set to 41.5497");
+                longitude = 41.5497;
+              }
+              if ( isNaN(latitude) ) {
+                MapPage.myself.utils.warn("Latitude were NaN, set to 2.0989");
+                latitude = 2.0989;
+              }
+
               map.flyTo({lon: longitude, lat: latitude}, map.getZoom(), ZOOM_PAN_OPTIONS);
             } else {
               container.style.color = "rgba(47, 79, 79, 0.8)";
@@ -523,34 +548,32 @@ export class MapPage {
   }
 
   static sendMessageToXPlane(message, identity) {
-    if ( !staticXPlaneWsServer || !staticXPlaneWsServer.getWebSocket() 
-         || staticXPlaneWsServer.getWebSocket().readyState == WS_CLOSED ) {
-      //alert("Connection closed!");
-      let alert = staticAlertController.create({
-        title: 'Warning',
-        subTitle: 'Not connected with X-Plane',
-        //buttons: ['OK']
-        buttons: [
-          {
-            text: 'Forget it',
-            role: 'cancel',
-            handler: () => {
+    if ( !staticXPlaneWsServer                || 
+         !staticXPlaneWsServer.getWebSocket() || 
+          staticXPlaneWsServer.getWebSocket().readyState != WS_OPEN ) {
+          let alert = staticAlertController.create({
+          title: 'Warning',
+          subTitle: 'Not connected, contact X-Plane right now?',
+          buttons: [
+            {
+              text: 'Forget it',
+              role: 'cancel',
+              handler: () => {
+              }
+            },
+            {
+              text: 'Connect Me Now',
+              handler: () => {
+                MapPage.myself.changeConnectMeState();
+              }
             }
-          },
-          {
-            text: 'Connect Me Now',
-            handler: () => {
-              MapPage.myself.changeConnectMeState();
-            }
-          }
-        ]
-      });
-      alert.present();
-
+          ]
+        });
+        alert.present();
     } else {
-      let finalMessage = message + "," + identity;
-      console.log("Sent \"" + finalMessage + "\" message to X-Plane");
-      staticXPlaneWsServer.getWebSocket().send(finalMessage);
+        let finalMessage = message + "," + identity;
+        MapPage.myself.utils.info("Sent \"" + finalMessage + "\" message to X-Plane");
+        staticXPlaneWsServer.getWebSocket().send(finalMessage);
     }
   }
 
@@ -576,15 +599,15 @@ export class MapPage {
     return container;
   }
 
+  
   connect() {
-    this.utils.info("Attempting connect to X-Plane at " + wsURL);
+    attempingConnectTimes++;
+    this.utils.info("[" + attempingConnectTimes + "] Attempting connect to X-Plane at " + wsURL);
     this.connectXPlane();
     this.positionMapWithUserLocation();
   }
 
   connectXPlane() {
-    //this.subscription = this.xpWsSocket.connect("ws://10.253.163.97:9090/websocket/xplane/").subscribe(
-    //this.subscription = this.xpWsSocket.connect("ws://localhost:9090/websocket/xplane/").subscribe(  
     this.subscription = this.xpWsSocket.connect(wsURL).subscribe(
         payload => {
           this.onMessageReceived(payload);
@@ -662,21 +685,66 @@ export class MapPage {
   }
   
   updateConnectMeState(event) {
-    console.log(event);
     this.utils.trace("Connect Me State change to:" + event);
     if (event == true) {
       this.visibilityContacting = "shown"; 
       threadAttempConnection = setInterval(() => {
-        this.connect();
+        this.attempToConnect();
       },fadeInOut);
     } else {
       if (threadAttempConnection) {
-        this.utils.trace("Stop attemping to contact X-Plane");
-        this.hideContactingXPlaneImg();
-        clearInterval(threadAttempConnection);
+        this.stopAttemptingToConnect();
       }
     }
   }
+
+  attempToConnect() {
+    if ( attempingConnectTimes > (RETRIES_ATTEMPTING_CONNECT-1) ) {
+      clearInterval(threadAttempConnection);
+      let alert = staticAlertController.create({
+      title: 'Warning',
+      message: `
+        <p > <b>` + attempingConnectTimes + `</b> attempts were made already to contact X-Plane. Did you check the address?</p>
+        IP: <font color="blue"><b>` + this.xplaneAddress + `</b></font><br>
+        Port: <font color="blue"><b>9002</b></font><br>
+      `,
+      buttons: [
+        {
+          text: 'Forget it',
+          role: 'cancel',
+          handler: () => {
+            this.stopAttemptingToConnect();
+          }
+        },
+        {
+          text: 'Keep trying',
+          handler: () => {
+            attempingConnectTimes = 0;
+            threadAttempConnection = setInterval(() => {
+              this.attempToConnect();
+            },fadeInOut);
+          }
+        }
+      ]
+      });
+      alert.present();
+    } else {
+      this.connect();
+    }
+  }
+
+  stopAttemptingToConnect() {
+    this.changeConnectMeStateOFF();
+    attempingConnectTimes = 0;
+    this.utils.trace("Stop attemping to contact X-Plane");
+    this.hideContactingXPlaneImg();
+    clearInterval(threadAttempConnection);
+  }
+
+  changeConnectMeStateOFF() {
+    this.connectMeState = false;
+  }
+
   changeConnectMeState() {
     this.connectMeState = !this.connectMeState;
     this.updateConnectMeState(this.connectMeState);
