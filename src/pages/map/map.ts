@@ -47,16 +47,20 @@ var wsURL = "ws://localhost:9002/";
 var map;            
 var latitude;
 var longitude;
+var userLatitude;
+var userLongitude;
+var userMarker;
 var lastLat;
 var lastLng;     
 var lastBearing;
-var avionMarker;
-var avionPopup;    
+var airplaneMarker;
+var airplanePopup;    
 var followAirplane;
 var gamePaused;
 var buttonPlayPause;
 var buttonFollowAirplane;
 var buttonGoToLocation;
+var buttonDisconnect;
 var threadAttempConnection;
 var identificationName;
 var staticXPlaneWsServer;
@@ -150,7 +154,12 @@ export class MapPage {
       this.xplanePort = dataSettings.xplanePort;
       identificationName = dataSettings.name; 
 
-      wsURL = "ws://" + this.xplaneAddress + ":" + this.xplanePort + "/";
+      if ( this.xplanePort ) {
+        wsURL = "ws://" + this.xplaneAddress + ":" + this.xplanePort + "/";
+      } else {
+        wsURL = "ws://" + this.xplaneAddress + "/";
+      }
+      
     });
   }
 
@@ -220,9 +229,10 @@ export class MapPage {
     this.utils.trace("Airplane new position (Lat/Lng): " + lat + ":" + lng);
 
     var newLatLng = new leaflet.LatLng(lat,lng);
-    if (avionMarker != null) {
-      avionMarker.setLatLng(newLatLng);
+    if (airplaneMarker == null) {
+      this.createAirplaneMarker(lat,lng);
     }
+    airplaneMarker.setLatLng(newLatLng);
 
     if ( bearing != undefined ) {
         // Adaptation for the current used icon
@@ -270,12 +280,12 @@ export class MapPage {
 
 
   static rotateMarker(bearing) {
-    var newBearingForTransformCss = avionMarker._icon.style.transform + ' rotate(' + bearing +  'deg)';
-    avionMarker._icon.style.transform = newBearingForTransformCss;
-    avionMarker._icon.style.transformOrigin = "center center 0px";
+    var newBearingForTransformCss = airplaneMarker._icon.style.transform + ' rotate(' + bearing +  'deg)';
+    airplaneMarker._icon.style.transform = newBearingForTransformCss;
+    airplaneMarker._icon.style.transformOrigin = "center center 0px";
 
-    avionMarker._shadow.style.transform = newBearingForTransformCss;
-    avionMarker._shadow.style.transformOrigin = "center center 0px";
+    airplaneMarker._shadow.style.transform = newBearingForTransformCss;
+    airplaneMarker._shadow.style.transformOrigin = "center center 0px";
   }
 
   ionViewDidLoad() {
@@ -287,25 +297,26 @@ export class MapPage {
     this.positionMapWithUserLocation();
   }
 
+  createAirplaneMarker(_latitude, _longitude) {
+    this.utils.trace("Airplaned will be added to " + _latitude + ":" + _longitude);
+
+    airplaneMarker = leaflet.marker([_latitude, _latitude], {icon: AIRPLANE_ICON}).addTo(map);
+    leaflet.DomUtil.addClass(airplaneMarker._icon,'aviationClass');
+    lastLat = _latitude;
+    lastLng = _longitude;
+
+    airplanePopup = airplaneMarker.bindPopup("<b>Hello world!</b><br>I am a popup.");
+    airplanePopup.setLatLng([_latitude, _longitude]);
+  }
+
   positionMapWithUserLocation() {
     this.geolocation.getCurrentPosition().then((resp) => {
       if (resp) {
-        this.utils.trace("LatLng: " + resp.coords.latitude + ":" + resp.coords.longitude);
-        latitude  = resp.coords.latitude;
-        longitude = resp.coords.longitude;
-        var latLng = leaflet.latLng(resp.coords.latitude, resp.coords.longitude);
-        if ( avionMarker == undefined ) {
-          this.utils.trace("Airplaned added to " + latitude + ":" + longitude);
-          avionMarker = leaflet.marker([latitude, longitude], {icon: AIRPLANE_ICON}).addTo(map);
-          leaflet.DomUtil.addClass(avionMarker._icon,'aviationClass');
-          lastLat = resp.coords.latitude;
-          lastLng = resp.coords.longitude;
-          
-          avionPopup = avionMarker.bindPopup("<b>Hello world!</b><br>I am a popup.");
-          avionPopup.setLatLng([latitude, longitude]);
-
-          leaflet.marker([latitude, longitude]).addTo(map);
-        }
+        userLatitude  = resp.coords.latitude;
+        userLongitude = resp.coords.longitude;
+        this.utils.info("LatLng User Location: " + userLatitude + ":" + userLongitude);
+        var latLng = leaflet.latLng(userLatitude, userLongitude);
+        userMarker = leaflet.marker([userLatitude, userLongitude]).addTo(map);
         map.flyTo(latLng, MAX_ZOOM - 4, ZOOM_PAN_OPTIONS);
       }      
     }).catch((error) => {
@@ -314,10 +325,15 @@ export class MapPage {
 
     let watch = this.geolocation.watchPosition();
     watch.subscribe((data) => {
-      //console.log(data);
-      // data can be a set of coordinates, or an error (if an error occurred).
-      // data.coords.latitude
-      // data.coords.longitude
+      if ( data.coords.latitude != userLatitude || data.coords.longitude != userLongitude ) {
+        userLatitude  = data.coords.latitude;
+        userLongitude = data.coords.longitude;
+
+        if ( userMarker ) {
+          var newLatLng = new leaflet.LatLng(userLatitude,userLongitude);
+          userMarker.setLatLng(newLatLng);
+        }
+      }      
     });
   }
 
@@ -331,6 +347,7 @@ export class MapPage {
     map.addControl(this.createGoToLocationButton());
     map.addControl(this.createFollowAirplaneButton());
     map.addControl(this.createPlayPauseButton());
+    map.addControl(this.createDisconnectButton());
     leaflet.control.layers(baseLayers).addTo(map);
 
     map.on('zoomend', this.zoomListener);
@@ -400,8 +417,8 @@ export class MapPage {
     AIRPLANE_ICON.options.shadowAnchor[0] = widthAnchor  - 5;
     AIRPLANE_ICON.options.shadowAnchor[1] = heightAnchor - 4;
 
-    if ( avionMarker != null ) {
-      avionMarker.setIcon(AIRPLANE_ICON);
+    if ( airplaneMarker != null ) {
+      airplaneMarker.setIcon(AIRPLANE_ICON);
       MapPage.rotateMarker(lastBearing);
     }
     if ( followAirplane ) {
@@ -428,16 +445,16 @@ export class MapPage {
           container.onclick = function() {
             container.style.color = "rgba(0, 0, 0, 0.8)";
 
-            if ( isNaN(longitude) ) {
-              MapPage.myself.utils.warn("Longitude were NaN, set to 41.5497");
-              longitude = 41.5497;
+            if ( isNaN(userLongitude) ) {
+              MapPage.myself.utils.warn("User Longitude were NaN, set to 41.5497");
+              userLongitude = 41.5497;
             }
-            if ( isNaN(latitude) ) {
+            if ( isNaN(userLatitude) ) {
               MapPage.myself.utils.warn("Latitude were NaN, set to 2.0989");
-              latitude = 2.0989;
+              userLatitude = 2.0989;
             }
             
-            map.flyTo({lon: longitude, lat: latitude}, MAX_ZOOM /*- 4*/, ZOOM_PAN_OPTIONS);
+            map.flyTo({lon: userLongitude, lat: userLatitude}, MAX_ZOOM - 3, ZOOM_PAN_OPTIONS);
             container.style.color = "rgba(47, 79, 79, 0.8)";
           }
           buttonGoToLocation = container;
@@ -547,6 +564,53 @@ export class MapPage {
     return new playPauseButtonControl();
   }
 
+  createDisconnectButton() {
+    var playPauseButtonControl = leaflet.Control.extend({
+      options: {
+        position: 'topleft' 
+        //control position - allowed: 'topleft', 'topright', 'bottomleft', 'bottomright'
+      },
+     
+      onAdd: function (map) {
+          var container = MapPage.createContainerButton();
+
+          var iconDisconnect = leaflet.DomUtil.create('i', 'fas fa-sign-out-alt fa-3x');
+          iconDisconnect.style.width     = '40px';
+          iconDisconnect.style.height    = '40px';
+          iconDisconnect.style.margin    = "0px 0px 0px 2px";
+          container.appendChild(iconDisconnect);
+
+          container.onclick = function() {
+            let alert = staticAlertController.create({
+            title: 'Warning',
+            message: `
+              Are you sure want disconnect from X-Plane?
+            `,
+            buttons: [
+              {
+                text: 'Forget it',
+                role: 'cancel',
+                handler: () => {
+                }
+              },
+              {
+                text: 'Yes, go ahed!',
+                handler: () => {
+                  MapPage.myself.disconnect();
+                }
+              }
+            ]
+            });
+            alert.present();
+          }
+          
+          buttonDisconnect = container;
+          return container;
+      }
+    });
+    return new playPauseButtonControl();
+  }
+
   static sendMessageToXPlane(message, identity) {
     if ( !staticXPlaneWsServer                || 
          !staticXPlaneWsServer.getWebSocket() || 
@@ -605,6 +669,13 @@ export class MapPage {
     this.utils.info("[" + attempingConnectTimes + "] Attempting connect to X-Plane at " + wsURL);
     this.connectXPlane();
     this.positionMapWithUserLocation();
+  }
+
+  disconnect() {
+    this.subscription.complete();
+    this.changeConnectMeStateOFF();
+    this.changeStateToDisconnected();
+    this.xpWsSocket.disconnect();
   }
 
   connectXPlane() {
@@ -706,7 +777,7 @@ export class MapPage {
       message: `
         <p > <b>` + attempingConnectTimes + `</b> attempts were made already to contact X-Plane. Did you check the address?</p>
         IP: <font color="blue"><b>` + this.xplaneAddress + `</b></font><br>
-        Port: <font color="blue"><b>9002</b></font><br>
+        Port: <font color="blue"><b>` + this.xplanePort + `</b></font><br>
       `,
       buttons: [
         {
@@ -745,7 +816,7 @@ export class MapPage {
     this.connectMeState = false;
   }
 
-  changeConnectMeState() {
+changeConnectMeState() {
     this.connectMeState = !this.connectMeState;
     this.updateConnectMeState(this.connectMeState);
   }

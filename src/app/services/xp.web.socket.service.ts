@@ -55,5 +55,13 @@ export class XpWebSocketService {
     return this.ws;
   }
 
+  public disconnect() {
+    if ( this.ws ) {
+      this.utils.info("Closing connection...");
+      this.ws.close();
+      this.ws = null;
+    }
+  }
+
 
 }
