@@ -1,16 +1,13 @@
-import { Component, ViewChild, ElementRef } from '@angular/core';
-import { NavController, NavParams } from 'ionic-angular';
-import { Geolocation } from '@ionic-native/geolocation'
-import { XpWebSocketService }  from '../../app/services/Xp.web.socket.service';
-import * as Rx from 'rxjs/Rx';
-import leaflet from 'leaflet';
-import { Utils } from '../../app/services/Utils';
-import { Aviation } from '../../app/services/Aviation';
+import { animate, state, style, transition, trigger } from '@angular/animations';
+import { Component, ElementRef, ViewChild } from '@angular/core';
+import { Geolocation } from '@ionic-native/geolocation';
+import { AlertController, NavController, NavParams } from 'ionic-angular';
 import * as $ from "jquery";
-import { last } from 'rxjs/operator/last';
+import leaflet from 'leaflet';
+import { Aviation } from '../../app/services/Aviation';
 import { DataService } from '../../app/services/DataService';
-import { trigger, state, style, animate, transition } from '@angular/animations';
-import { AlertController } from 'ionic-angular';
+import { Utils } from '../../app/services/Utils';
+import { XpWebSocketService } from '../../app/services/Xp.web.socket.service';
 
 const MAX_ZOOM                    = 15;
 const ZOOM_PAN_OPTIONS            = {animate: true, duration: 0.25, easeLinearity: 1.0, noMoveStart: false}; /*{animate: true, duration: 3.5, easeLinearity: 1.0, noMoveStart: false}*/
@@ -178,6 +175,7 @@ export class MapPage {
 
     // Check Connection State
     // If before DISCONNECTED, then now should be CONNECTED
+    console.log("here");
     if ( !this.isConnectedWithXPlane ) {
       this.changeStateToConnected();
     }
@@ -190,16 +188,19 @@ export class MapPage {
       if ( message.indexOf('airplane') >= 0 ) {
         // Bearing the Airplane new given Lat/Lng according with the last Lat/Lng
         var bearing;
-        if ( (lastLat != undefined && lastLng != undefined) &&
-            (lastLat != json.lat || lastLng != json.lng) ) {
+        if ( (lastLat && lastLng) && 
+             (lastLat != json.airplane.lat || lastLng != json.airplane.lng) ) {
 
           bearing = this.aviation.bearing(json.airplane.lng,json.airplane.lat,lastLng,lastLat);
 
-          lastLat     = json.airplane.lat;
-          lastLng     = json.airplane.lng;
+          /*var msg = "[Actual:" + json.airplane.lng + "," + json.airplane.lat+ "] " + 
+                    "[Last:" + lastLng + "," + lastLat + "] - bearing=" + bearing;
+          console.log(msg);*/
         } 
         // Reposition the Airplane new give Lat/Lng
-        this.updateAirplanePosition(json.airplane.lat,json.airplane.lng, bearing);
+        this.updateAirplanePosition(json.airplane.lat, json.airplane.lng, bearing);
+        lastLat = json.airplane.lat;
+        lastLng = json.airplane.lng;
       }
       else if ( message.indexOf('message') >= 0 ) {
         if ( json.message == "PAUSED" ) {
@@ -215,7 +216,7 @@ export class MapPage {
         if ( json.message == "STOPPED" ) {
           var event = new Event('STOPPED');
           buttonPlayPause.dispatchEvent(event);
-          this.changeStateToDisconnected();
+          this.disconnect();
         }
       } else {
         this.utils.trace("Message not processed: ",message);
@@ -229,12 +230,12 @@ export class MapPage {
     this.utils.trace("Airplane new position (Lat/Lng): " + lat + ":" + lng);
 
     var newLatLng = new leaflet.LatLng(lat,lng);
-    if (airplaneMarker == null) {
+    if (!airplaneMarker) {
       this.createAirplaneMarker(lat,lng);
     }
     airplaneMarker.setLatLng(newLatLng);
 
-    if ( bearing != undefined ) {
+    if ( bearing ) {
         // Adaptation for the current used icon
         if ( bearing >= 0 && bearing <= 180 ) {
           bearing += 180;
@@ -280,6 +281,7 @@ export class MapPage {
 
 
   static rotateMarker(bearing) {
+    console.log("Rotate:" + bearing + ", " + airplaneMarker._icon.style.transform);
     var newBearingForTransformCss = airplaneMarker._icon.style.transform + ' rotate(' + bearing +  'deg)';
     airplaneMarker._icon.style.transform = newBearingForTransformCss;
     airplaneMarker._icon.style.transformOrigin = "center center 0px";
@@ -294,7 +296,7 @@ export class MapPage {
   }
 
   ionViewDidEnter() {
-    this.positionMapWithUserLocation();
+    //this.positionMapWithUserLocation();
   }
 
   createAirplaneMarker(_latitude, _longitude) {
@@ -302,8 +304,6 @@ export class MapPage {
 
     airplaneMarker = leaflet.marker([_latitude, _latitude], {icon: AIRPLANE_ICON}).addTo(map);
     leaflet.DomUtil.addClass(airplaneMarker._icon,'aviationClass');
-    lastLat = _latitude;
-    lastLng = _longitude;
 
     airplanePopup = airplaneMarker.bindPopup("<b>Hello world!</b><br>I am a popup.");
     airplanePopup.setLatLng([_latitude, _longitude]);
@@ -417,7 +417,7 @@ export class MapPage {
     AIRPLANE_ICON.options.shadowAnchor[0] = widthAnchor  - 5;
     AIRPLANE_ICON.options.shadowAnchor[1] = heightAnchor - 4;
 
-    if ( airplaneMarker != null ) {
+    if ( airplaneMarker ) {
       airplaneMarker.setIcon(AIRPLANE_ICON);
       MapPage.rotateMarker(lastBearing);
     }
@@ -665,17 +665,27 @@ export class MapPage {
 
   
   connect() {
+    airplaneMarker = null;
+    lastLat        = null;
+    lastLng        = null;
+    latitude       = null;
+    longitude      = null;
+    lastBearing    = null;
+
     attempingConnectTimes++;
     this.utils.info("[" + attempingConnectTimes + "] Attempting connect to X-Plane at " + wsURL);
     this.connectXPlane();
-    this.positionMapWithUserLocation();
   }
 
   disconnect() {
     this.subscription.complete();
+    this.subscription.unsubscribe();
     this.changeConnectMeStateOFF();
     this.changeStateToDisconnected();
     this.xpWsSocket.disconnect();
+
+    map.removeLayer(airplaneMarker);
+    airplaneMarker = null;
   }
 
   connectXPlane() {
