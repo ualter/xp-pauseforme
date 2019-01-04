@@ -175,7 +175,6 @@ export class MapPage {
 
     // Check Connection State
     // If before DISCONNECTED, then now should be CONNECTED
-    console.log("here");
     if ( !this.isConnectedWithXPlane ) {
       this.changeStateToConnected();
     }
@@ -280,13 +279,14 @@ export class MapPage {
   }
 
 
-  static rotateMarker(bearing) {
-    console.log("Rotate:" + bearing + ", " + airplaneMarker._icon.style.transform);
-    var newBearingForTransformCss = airplaneMarker._icon.style.transform + ' rotate(' + bearing +  'deg)';
-    airplaneMarker._icon.style.transform = newBearingForTransformCss;
-    airplaneMarker._icon.style.transformOrigin = "center center 0px";
+  static rotateMarker(_bearing) {
+    _bearing = parseInt(_bearing);
 
-    airplaneMarker._shadow.style.transform = newBearingForTransformCss;
+    var newBearingForTransformCss                = airplaneMarker._icon.style.transform + ' rotate(' + _bearing +  'deg)';
+    airplaneMarker._icon.style.transform         = newBearingForTransformCss;
+    airplaneMarker._icon.style.transformOrigin   = "center center 0px";
+
+    airplaneMarker._shadow.style.transform       = newBearingForTransformCss;
     airplaneMarker._shadow.style.transformOrigin = "center center 0px";
   }
 
@@ -419,7 +419,7 @@ export class MapPage {
 
     if ( airplaneMarker ) {
       airplaneMarker.setIcon(AIRPLANE_ICON);
-      MapPage.rotateMarker(lastBearing);
+      //MapPage.rotateMarker(lastBearing);
     }
     if ( followAirplane ) {
       map.panTo(leaflet.latLng(latitude,longitude));
