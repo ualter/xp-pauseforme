@@ -38,6 +38,9 @@ var baseLayers = {
   "Default":   standardTile
 };
 
+const DEFAULT_LONGITUDE = 41.5497;
+const DEFAULT_LATITUDE  = 2.0989;
+
 //var wsURL = "ws://localhost:9002/";
 var fadeInOut = 500;
 var wsURL = "ws://localhost:9002/";
@@ -186,15 +189,11 @@ export class MapPage {
       // Check if it is a airplane update communication
       if ( message.indexOf('airplane') >= 0 ) {
         // Bearing the Airplane new given Lat/Lng according with the last Lat/Lng
-        var bearing;
+        let bearing;
         if ( (lastLat && lastLng) && 
              (lastLat != json.airplane.lat || lastLng != json.airplane.lng) ) {
 
           bearing = this.aviation.bearing(json.airplane.lng,json.airplane.lat,lastLng,lastLat);
-
-          /*var msg = "[Actual:" + json.airplane.lng + "," + json.airplane.lat+ "] " + 
-                    "[Last:" + lastLng + "," + lastLat + "] - bearing=" + bearing;
-          console.log(msg);*/
         } 
         // Reposition the Airplane new give Lat/Lng
         this.updateAirplanePosition(json.airplane.lat, json.airplane.lng, bearing);
@@ -235,14 +234,15 @@ export class MapPage {
     airplaneMarker.setLatLng(newLatLng);
 
     if ( bearing ) {
-        // Adaptation for the current used icon
+        // Adapt the rotation directo for the current icon used
         if ( bearing >= 0 && bearing <= 180 ) {
           bearing += 180;
         } else {
           bearing -= 180;
         }
-
+        // Save last calculated bearing
         lastBearing = bearing;
+        // Rotate the Icon according with the bearing
         MapPage.rotateMarker(bearing);
     }
 
@@ -280,14 +280,21 @@ export class MapPage {
 
 
   static rotateMarker(_bearing) {
-    _bearing = parseInt(_bearing);
-
-    var newBearingForTransformCss                = airplaneMarker._icon.style.transform + ' rotate(' + _bearing +  'deg)';
-    airplaneMarker._icon.style.transform         = newBearingForTransformCss;
-    airplaneMarker._icon.style.transformOrigin   = "center center 0px";
-
-    airplaneMarker._shadow.style.transform       = newBearingForTransformCss;
-    airplaneMarker._shadow.style.transformOrigin = "center center 0px";
+    if ( airplaneMarker ) {
+      _bearing = parseInt(_bearing);
+      // New bearing Popup info
+      airplaneMarker.setPopupContent("<h3>Bearing</h3>" + _bearing);
+      // Remove the last rotate info
+      var oldBearingCss = (airplaneMarker._icon.style.transform).replace( new RegExp("rotate\\(.*deg\\)","gm"), "");
+      // Add the new rotate info
+      var newBearingCss = oldBearingCss + ' rotate(' + _bearing +  'deg)';                
+      // Icon Airplane
+      airplaneMarker._icon.style.transform         = newBearingCss;
+      airplaneMarker._icon.style.transformOrigin   = "center center 0px";
+      // Icon Shadown Airplane
+      airplaneMarker._shadow.style.transform       = newBearingCss;
+      airplaneMarker._shadow.style.transformOrigin = "center center 0px";
+    }
   }
 
   ionViewDidLoad() {
@@ -300,13 +307,25 @@ export class MapPage {
   }
 
   createAirplaneMarker(_latitude, _longitude) {
-    this.utils.trace("Airplaned will be added to " + _latitude + ":" + _longitude);
-
+    this.utils.trace("Adding airplaned to " + _latitude + ":" + _longitude);
     airplaneMarker = leaflet.marker([_latitude, _latitude], {icon: AIRPLANE_ICON}).addTo(map);
     leaflet.DomUtil.addClass(airplaneMarker._icon,'aviationClass');
-
-    airplanePopup = airplaneMarker.bindPopup("<b>Hello world!</b><br>I am a popup.");
+    airplanePopup = airplaneMarker.bindPopup("<b>Hello world!</b><br>I am an airplane.");
     airplanePopup.setLatLng([_latitude, _longitude]);
+
+    // Observer for the subscription (see right below)
+    var observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutationRecord) {
+          var oldValue = airplaneMarker._icon.style.transform
+          var newValue = oldValue.replace( new RegExp("rotate\\(.*deg\\)","gm"), "");
+          airplaneMarker._icon.style.transform   = newValue + " rotate(" + lastBearing + "deg)";
+          airplaneMarker._shadow.style.transform = newValue + " rotate(" + lastBearing + "deg)";
+      });    
+    });
+    // Subscription to observe the eventual style modification of the AirplaneMarker (by something other than me)
+    airplaneMarker._icon.id = "airplaneMarker";
+    var airplaneMarkerTarget = document.getElementById(airplaneMarker._icon.id);
+    observer.observe(airplaneMarkerTarget, { attributes : true, attributeFilter : ['style'] });
   }
 
   positionMapWithUserLocation() {
@@ -325,7 +344,13 @@ export class MapPage {
 
     let watch = this.geolocation.watchPosition();
     watch.subscribe((data) => {
-      if ( data.coords.latitude != userLatitude || data.coords.longitude != userLongitude ) {
+
+      if ( data 
+           && data.coords 
+           && data.coords.latitude
+           && data.coords.longitude
+           && (data.coords.latitude != userLatitude || data.coords.longitude != userLongitude) ) {
+
         userLatitude  = data.coords.latitude;
         userLongitude = data.coords.longitude;
 
@@ -419,7 +444,7 @@ export class MapPage {
 
     if ( airplaneMarker ) {
       airplaneMarker.setIcon(AIRPLANE_ICON);
-      //MapPage.rotateMarker(lastBearing);
+      MapPage.rotateMarker(lastBearing);
     }
     if ( followAirplane ) {
       map.panTo(leaflet.latLng(latitude,longitude));
@@ -446,12 +471,12 @@ export class MapPage {
             container.style.color = "rgba(0, 0, 0, 0.8)";
 
             if ( isNaN(userLongitude) ) {
-              MapPage.myself.utils.warn("User Longitude were NaN, set to 41.5497");
-              userLongitude = 41.5497;
+              MapPage.myself.utils.warn("User Longitude were NaN, set to " + DEFAULT_LONGITUDE);
+              userLongitude = DEFAULT_LONGITUDE;
             }
             if ( isNaN(userLatitude) ) {
-              MapPage.myself.utils.warn("Latitude were NaN, set to 2.0989");
-              userLatitude = 2.0989;
+              MapPage.myself.utils.warn("Latitude were NaN, set to " + DEFAULT_LATITUDE);
+              userLatitude = DEFAULT_LATITUDE;
             }
             
             map.flyTo({lon: userLongitude, lat: userLatitude}, MAX_ZOOM - 3, ZOOM_PAN_OPTIONS);
@@ -678,22 +703,26 @@ export class MapPage {
   }
 
   disconnect() {
+    clearInterval(threadAttempConnection);
     this.subscription.complete();
     this.subscription.unsubscribe();
     this.changeConnectMeStateOFF();
     this.changeStateToDisconnected();
     this.xpWsSocket.disconnect();
 
-    map.removeLayer(airplaneMarker);
+    if (airplaneMarker) {
+      this.utils.trace("Removed the AirplaneMarker");
+      map.removeLayer(airplaneMarker);
+    }
     airplaneMarker = null;
   }
 
   connectXPlane() {
     this.subscription = this.xpWsSocket.connect(wsURL).subscribe(
         payload => {
+          clearInterval(threadAttempConnection);
           this.onMessageReceived(payload);
           this.hideContactingXPlaneImg();
-          clearInterval(threadAttempConnection);
         },
         error => {
           this.utils.error('Oops', error)
