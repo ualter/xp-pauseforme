@@ -42,6 +42,11 @@ export class Utils {
         return year + "/" + this.shortMonthNames[monthIndex] + "/" + day;
     }
 
+    formatNumber(number) {
+        return parseInt(number).toString().replace(/\d(?=(\d{3})+$)/g,'$&,');
+    }
+      
+
     isJsonMessage(_message) {
         if (/^[\],:{}\s]*$/.test(_message.replace(/\\["\\\/bfnrtu]/g, '@').
             replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']').

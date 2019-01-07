@@ -14,12 +14,15 @@ export class Aviation {
 	    lon2 = lon2 * Math.PI / 180;
 	    lat1 = lat1 * Math.PI / 180;
         lat2 = lat2 * Math.PI / 180;
-        
-        var y = Math.sin(lon2 - lon1) * Math.cos(lat2);
-        var x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1);
-        var brng = Math.atan2(y, x);
 
+        var y     = Math.sin(lon2 - lon1) * Math.cos(lat2);
+        var x     = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1);
+        var brng  = Math.atan2(y, x);
         var bearing = brng / Math.PI * 180;
+
+        if (bearing == 0) {
+            console.log("[" +lon1 + "," + lat1 + " [" + lon2 + "," + lat2 + "] = " + bearing);
+        }
         return bearing;
     }
 

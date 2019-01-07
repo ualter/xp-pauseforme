@@ -1,7 +1,7 @@
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import { Geolocation } from '@ionic-native/geolocation';
-import { AlertController, NavController, NavParams } from 'ionic-angular';
+import { AlertController, NavController, NavParams, ToastController } from 'ionic-angular';
 import * as $ from "jquery";
 import leaflet from 'leaflet';
 import { Aviation } from '../../app/services/Aviation';
@@ -38,12 +38,17 @@ var baseLayers = {
   "Default":   standardTile
 };
 
-const DEFAULT_LONGITUDE = 41.5497;
-const DEFAULT_LATITUDE  = 2.0989;
+const RETRIES_ATTEMPTING_CONNECT = 30;
+const DEFAULT_LONGITUDE          = 41.5497;
+const DEFAULT_LATITUDE           = 2.0989;
+const enum HEADING_OPTION {
+  CALCULATED = 0,
+  X_PLANE = 1
+}
 
-//var wsURL = "ws://localhost:9002/";
+var SELECTED_HEADING_OPTION = HEADING_OPTION.X_PLANE;
 var fadeInOut = 500;
-var wsURL = "ws://localhost:9002/";
+var wsURL     = "ws://localhost:9002/";
 var map;            
 var latitude;
 var longitude;
@@ -66,8 +71,6 @@ var identificationName;
 var staticXPlaneWsServer;
 var staticAlertController;
 var attempingConnectTimes = 0;
-
-const RETRIES_ATTEMPTING_CONNECT = 10;
 
 enum State {
   DISCONNECTED = 0,
@@ -110,8 +113,14 @@ var AIRPLANE_ICON = leaflet.icon({
       state('hidden', style({ opacity: 0 })),
       transition('* => *', animate(fadeInOut))
     ]),
+    trigger('visibilityWaiting', [
+      state('shown', style({ opacity: 1 })),
+      state('hidden', style({ opacity: 0 })),
+      transition('* => *', animate(fadeInOut))
+    ])
   ]
 })
+
 export class MapPage {
 
   @ViewChild('map') mapContainer: ElementRef;
@@ -120,15 +129,17 @@ export class MapPage {
   visibilityMessageBar:      string = '';
   visibilityButtonConnectMe: string = '';
   visibilityContacting:      string = 'hidden';
+  visibilityWaiting:         string = 'hidden';          
 
   messageBarIcon:       string = 'thunderstorm';
   messageBarText:       string = "Disconnected";
   messageBarColorIcon:  string = "";
   messageBarColor:      string = "red";
-
+  
   private isConnectedWithXPlane:boolean = false;
   private connectionState:number = State.DISCONNECTED;
 
+  private connectMeDisable:boolean = false;
   private connectMeState:boolean = false;
   private xplaneAddress: string;
   private xplanePort: string;
@@ -141,6 +152,7 @@ export class MapPage {
     public navParams: NavParams, 
     public geolocation: Geolocation,
     public alertCtrl: AlertController,
+    public toastCtrl: ToastController,
     public xpWsSocket: XpWebSocketService, 
     public utils: Utils,
     public aviation: Aviation) {
@@ -176,82 +188,122 @@ export class MapPage {
     var origin  = payload.origin;
     var message = payload.data;
 
-    // Check Connection State
-    // If before DISCONNECTED, then now should be CONNECTED
-    if ( !this.isConnectedWithXPlane ) {
-      this.changeStateToConnected();
-    }
-
-    if ( this.utils.isJsonMessage(message) ) {
-      var json = JSON.parse(message);
-      this.utils.trace("JSON received: ",json);
-
-      // Check if it is a airplane update communication
-      if ( message.indexOf('airplane') >= 0 ) {
-        // Bearing the Airplane new given Lat/Lng according with the last Lat/Lng
-        let bearing;
-        if ( (lastLat && lastLng) && 
-             (lastLat != json.airplane.lat || lastLng != json.airplane.lng) ) {
-
-          bearing = this.aviation.bearing(json.airplane.lng,json.airplane.lat,lastLng,lastLat);
-        } 
-        // Reposition the Airplane new give Lat/Lng
-        this.updateAirplanePosition(json.airplane.lat, json.airplane.lng, bearing);
-        lastLat = json.airplane.lat;
-        lastLng = json.airplane.lng;
-      }
-      else if ( message.indexOf('message') >= 0 ) {
-        if ( json.message == "PAUSED" ) {
-          var event = new Event('PAUSED');
-          buttonPlayPause.dispatchEvent(event);
-          this.changeStateToPaused();
-        } else
-        if ( json.message == "PLAY" ) {
-          var event = new Event('PLAY');
-          buttonPlayPause.dispatchEvent(event);
-          this.changeStateToUnpaused();
-        } else
-        if ( json.message == "STOPPED" ) {
-          var event = new Event('STOPPED');
-          buttonPlayPause.dispatchEvent(event);
-          this.disconnect();
+    // Connection is still OPEN
+    if ( this.xpWsSocket.getWebSocket() && this.xpWsSocket.getWebSocket().readyState == WS_OPEN ) {
+        // Check Connection State
+        // If were DISCONNECTED before, then now should be CONNECTED
+        if ( !this.isConnectedWithXPlane && this.connectMeState ) {
+          this.changeStateToConnected();
         }
-      } else {
-        this.utils.trace("Message not processed: ",message);
-      }
-    } else {
-      this.utils.warn("Received JSON message it is NOT OK..: \"" + message + "\" from " + origin);
+
+        if ( this.utils.isJsonMessage(message) ) {
+            var json = JSON.parse(message);
+            this.utils.trace("JSON received: ",json);
+
+            // Check if it is a airplane update communication
+            if ( message.indexOf('airplane') >= 0 ) {
+              this.onMessageAirplane(json);
+            }
+            else if ( message.indexOf('message') >= 0 ) {
+              this.onMessageCommand(json);
+            } else {
+              this.utils.trace("Message not processed: ",message);
+            }
+        } else {
+            this.utils.warn("Received JSON message it is NOT OK..: \"" + message + "\" from " + origin);
+        }
     }
   }
 
-  updateAirplanePosition(lat, lng, bearing?) {
-    this.utils.trace("Airplane new position (Lat/Lng): " + lat + ":" + lng);
+  onMessageCommand(json) {
+    this.utils.trace(json.message);
+    if ( json.message.startsWith("PAUSED") ) {
+      var event = new Event('PAUSED');
+      buttonPlayPause.dispatchEvent(event);
+      if ( this.connectionState != State.PAUSED ) {
+          const toast = this.toastCtrl.create({
+              message: json.message,
+              position: 'top',
+              showCloseButton: true,
+              closeButtonText: 'Ok'
+              //duration: 10000
+          });
+          toast.present();
+      }
+      this.changeStateToPaused();
 
-    var newLatLng = new leaflet.LatLng(lat,lng);
+    } else
+    if ( json.message == "PLAY" ) {
+      var event = new Event('PLAY');
+      buttonPlayPause.dispatchEvent(event);
+      this.changeStateToUnpaused();
+    } else
+    if ( json.message == "STOPPED" ) {
+      var event = new Event('STOPPED');
+      buttonPlayPause.dispatchEvent(event);
+      this.disconnect();
+    }
+  }
+
+  onMessageAirplane(json) {
+    // Bearing the Airplane new given Lat/Lng according with the last Lat/Lng
+    let bearing = undefined;
+    if ( /* SELECTED_HEADING_OPTION == HEADING_OPTION.CALCULATED && */ (lastLat && lastLng) && (lastLat != json.airplane.lat || lastLng != json.airplane.lng) ) {
+      bearing = this.aviation.bearing(json.airplane.lng,json.airplane.lat,lastLng,lastLat);
+    } 
+    // Reposition the Airplane new give Lat/Lng
+    this.updateAirplanePosition(json.airplane, bearing);
+    lastLat = json.airplane.lat;
+    lastLng = json.airplane.lng;
+  }
+  
+  updateAirplanePosition(airplaneData, bearing) {
+    this.utils.trace("Airplane new position (Lat/Lng): " + airplaneData.lat + ":" + airplaneData.lng);
+
+    var newLatLng = new leaflet.LatLng(airplaneData.lat,airplaneData.lng);
     if (!airplaneMarker) {
-      this.createAirplaneMarker(lat,lng);
+      this.createAirplaneMarker(airplaneData.lat,airplaneData.lng);
     }
     airplaneMarker.setLatLng(newLatLng);
+    airplanePopup.setLatLng(newLatLng);
+    let htmlPopup = this.htmlPopup(airplaneData);
+    airplaneMarker.setPopupContent(htmlPopup);
+    
 
-    if ( bearing ) {
-        // Adapt the rotation directo for the current icon used
-        if ( bearing >= 0 && bearing <= 180 ) {
-          bearing += 180;
-        } else {
-          bearing -= 180;
-        }
-        // Save last calculated bearing
-        lastBearing = bearing;
-        // Rotate the Icon according with the bearing
-        MapPage.rotateMarker(bearing);
+    // Rotate the Icon according with the bearing
+    // Two options to rotate the Icon in Degrees according to the Heading of the Airplane
+    // 1) bearing (calculated here with a Javascript function, using as parameters the last and current latitude and longitude coordinates.)
+    // 2) airplaneData.heading (the information received of the X-Plane, just as it is, any calculation involved.)
+    if ( SELECTED_HEADING_OPTION == HEADING_OPTION.CALCULATED ) {
+      if ( bearing ) {
+          // Adapt the rotation directon for the current icon used
+          bearing = this.adaptAngleForIcon(bearing);
+          lastBearing = bearing;
+      }
+    } else 
+    if ( SELECTED_HEADING_OPTION == HEADING_OPTION.X_PLANE ) {
+        lastBearing = airplaneData.heading;
     }
 
     if ( followAirplane ) {
       map.panTo(newLatLng);
     }
 
-    latitude  = lat;
-    longitude = lng;
+    latitude  = airplaneData.lat;
+    longitude = airplaneData.lng;
+  }
+
+  adaptAngleForIcon(angle) {
+    // Adapt the rotation directon for the current icon used
+    if ( angle >= 0 && angle <= 180 ) {
+      angle += 180;
+    } else {
+      angle -= 180;
+    }
+    if (angle < 0) {
+      angle = 360 - (angle * -1);
+    }
+    return angle;
   }
 
   static direction() {
@@ -282,8 +334,6 @@ export class MapPage {
   static rotateMarker(_bearing) {
     if ( airplaneMarker ) {
       _bearing = parseInt(_bearing);
-      // New bearing Popup info
-      airplaneMarker.setPopupContent("<h3>Bearing</h3>" + _bearing);
       // Remove the last rotate info
       var oldBearingCss = (airplaneMarker._icon.style.transform).replace( new RegExp("rotate\\(.*deg\\)","gm"), "");
       // Add the new rotate info
@@ -446,8 +496,12 @@ export class MapPage {
       airplaneMarker.setIcon(AIRPLANE_ICON);
       MapPage.rotateMarker(lastBearing);
     }
-    if ( followAirplane ) {
-      map.panTo(leaflet.latLng(latitude,longitude));
+    if ( followAirplane && map && leaflet ) {
+      try {
+        map.panTo(leaflet.latLng(latitude,longitude));
+      } catch (error) {
+        MapPage.myself.utils.error(error);
+      }
     }
   }
 
@@ -468,8 +522,11 @@ export class MapPage {
           container.appendChild(icon);
           
           container.onclick = function() {
-            container.style.color = "rgba(0, 0, 0, 0.8)";
+            // If FollowAirplane is ON, we turn it off
+            followAirplane = false;
+            buttonFollowAirplane.style.color = "rgba(47, 79, 79, 0.8)";
 
+            container.style.color = "rgba(0, 0, 0, 0.8)";
             if ( isNaN(userLongitude) ) {
               MapPage.myself.utils.warn("User Longitude were NaN, set to " + DEFAULT_LONGITUDE);
               userLongitude = DEFAULT_LONGITUDE;
@@ -478,7 +535,6 @@ export class MapPage {
               MapPage.myself.utils.warn("Latitude were NaN, set to " + DEFAULT_LATITUDE);
               userLatitude = DEFAULT_LATITUDE;
             }
-            
             map.flyTo({lon: userLongitude, lat: userLatitude}, MAX_ZOOM - 3, ZOOM_PAN_OPTIONS);
             container.style.color = "rgba(47, 79, 79, 0.8)";
           }
@@ -512,12 +568,12 @@ export class MapPage {
               container.style.color = "rgba(0, 0, 0, 0.8)";
 
               if ( isNaN(longitude) ) {
-                MapPage.myself.utils.warn("Longitude were NaN, set to 41.5497");
-                longitude = 41.5497;
+                MapPage.myself.utils.warn("Longitude were NaN, set to " + DEFAULT_LONGITUDE);
+                longitude = DEFAULT_LONGITUDE;
               }
               if ( isNaN(latitude) ) {
-                MapPage.myself.utils.warn("Latitude were NaN, set to 2.0989");
-                latitude = 2.0989;
+                MapPage.myself.utils.warn("Latitude were NaN, set to " + DEFAULT_LATITUDE);
+                latitude = DEFAULT_LATITUDE;
               }
 
               map.flyTo({lon: longitude, lat: latitude}, map.getZoom(), ZOOM_PAN_OPTIONS);
@@ -555,6 +611,7 @@ export class MapPage {
           
           container.onclick = function() {
             if ( MapPage.getWSState() == WS_OPEN ) {
+              MapPage.myself.visibilityWaiting = "shown"; 
               gamePaused = !gamePaused;
               if ( gamePaused ) {
                 if (container.contains(iconPause)) container.removeChild(iconPause);
@@ -573,13 +630,13 @@ export class MapPage {
             if (container.contains(iconPause)) container.removeChild(iconPause);
             container.appendChild(iconPlay);
             container.style.color = "rgba(0, 0, 0, 0.8)";
-            //this.utils.info("X-Plane was PAUSED!");
+            MapPage.myself.utils.info("X-Plane was PAUSED!");
           });
           container.addEventListener("PLAY", function(){
              container.appendChild(iconPause);
              if (container.contains(iconPlay)) container.removeChild(iconPlay);
              container.style.color = "rgba(47, 79, 79, 0.8)";
-             //this.utils.info("X-Plane is in PLAY mode now!");
+             MapPage.myself.utils.info("X-Plane is in PLAY mode now!");
           });
 
           buttonPlayPause = container;
@@ -653,7 +710,7 @@ export class MapPage {
             {
               text: 'Connect Me Now',
               handler: () => {
-                MapPage.myself.changeConnectMeState();
+                MapPage.myself.switchConnectMeState();
               }
             }
           ]
@@ -703,12 +760,14 @@ export class MapPage {
   }
 
   disconnect() {
+    MapPage.sendMessageToXPlane("{CLOSE}", identificationName);
     clearInterval(threadAttempConnection);
     this.subscription.complete();
     this.subscription.unsubscribe();
-    this.changeConnectMeStateOFF();
+    this.switchConnectMeStateToOFF();
     this.changeStateToDisconnected();
     this.xpWsSocket.disconnect();
+    this.connectMeDisable = false;
 
     if (airplaneMarker) {
       this.utils.trace("Removed the AirplaneMarker");
@@ -747,6 +806,9 @@ export class MapPage {
       this.visibilityButtonConnectMe = "hidden"; 
       this.visibilityContacting      = "hidden"; 
     },fadeInOut+500);
+    setTimeout(() => {   
+      this.connectMeDisable          = true;
+    },fadeInOut+600);
     
   }
 
@@ -758,6 +820,7 @@ export class MapPage {
     this.messageBarIcon         = "thunderstorm";
     this.messageBarText         = "DISCONNECTED";
     this.messageBarColorIcon    = "";
+    this.connectMeDisable       = false;
     setTimeout(() => {  
       this.visibilityMessageBar      = "shown";
       this.visibilityButtonConnectMe = "shown";
@@ -773,8 +836,9 @@ export class MapPage {
     this.messageBarColorIcon    = "";
     this.messageBarColor        = "blue";
     setTimeout(() => {  
-      this.visibilityMessageBar      = "shown";
-      this.messageBarColor           = "paused";
+      this.visibilityMessageBar   = "shown";
+      this.messageBarColor        = "paused";
+      this.visibilityWaiting      = "hidden"; 
     },fadeInOut+500);
   }
 
@@ -790,8 +854,8 @@ export class MapPage {
       this.visibilityMessageBar      = "hidden";
       this.visibilityButtonConnectMe = "hidden"; 
       this.visibilityContacting      = "hidden"; 
+      this.visibilityWaiting         = "hidden"; 
     },fadeInOut+500);
-    
   }
   
   updateConnectMeState(event) {
@@ -844,20 +908,97 @@ export class MapPage {
   }
 
   stopAttemptingToConnect() {
-    this.changeConnectMeStateOFF();
+    this.switchConnectMeStateToOFF();
     attempingConnectTimes = 0;
     this.utils.trace("Stop attemping to contact X-Plane");
     this.hideContactingXPlaneImg();
     clearInterval(threadAttempConnection);
   }
 
-  changeConnectMeStateOFF() {
+  switchConnectMeStateToOFF() {
     this.connectMeState = false;
   }
 
-changeConnectMeState() {
+  switchConnectMeState() {
     this.connectMeState = !this.connectMeState;
     this.updateConnectMeState(this.connectMeState);
+  }
+
+  htmlPopup(airplaneData) {
+    let paddingValue  = 3;
+    let fontSizeLabel = 12;
+    let fontSizeValue = 12;
+    let fontSizeUnit  = 11;
+    let autopilotState = airplaneData.autopilot.on == 1 ? "ON" : "OFF";
+    var html = `
+      <span style="font-size:12px;"><b>INFO</b></span>
+      <hr>
+      <table border=0 cellspacing=0 cellpadding=0>
+      <tr>
+        <td>
+          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Heading..:</span>
+        </td>
+        <td width="40px" align="right"  style="padding-right:` + paddingValue + `px;">
+          <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + airplaneData.heading + `</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Altitude.:</span>
+        </td>
+        <td align="right" style="padding-right:` + paddingValue + `px;">
+          <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + this.utils.formatNumber(airplaneData.currentAltitude) + `</span>
+        </td>
+        <td>
+          <span style="color:black;font-weight:bold;font-size:` + fontSizeUnit +`px;">feet</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Vert.Spd.:</span>
+        </td>
+        <td align="right" style="padding-right:` + paddingValue + `px;">
+          <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + airplaneData.vsFpm + `</span>
+        </td>
+        <td>
+          <span style="color:black;font-weight:bold;font-size:` + fontSizeUnit +`px;">fpm</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Airspeed.:</span>
+        </td>
+        <td align="right" style="padding-right:` + paddingValue + `px;">
+          <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + airplaneData.trueAirspeed + `</span>
+        </td>
+        <td>
+          <span style="color:black;font-weight:bold;font-size:` + fontSizeUnit +`px;">kts</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Ground...:</span>&nbsp;&nbsp;
+        </td>
+        <td align="right" style="padding-right:` + paddingValue + `px;">
+          <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + airplaneData.groundspeed + `</span>
+        </td>
+        <td>
+          <span style="color:black;font-weight:bold;font-size:` + fontSizeUnit +`px;">kts</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Autopilot:</span>
+        </td>
+        <td align="right" style="padding-right:` + paddingValue + `px;">
+          <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + autopilotState + `</span>
+        </td>
+        <td>
+        </td>
+      </tr>
+      </table>
+    `;
+    return html;
   }
 
 }
