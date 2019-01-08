@@ -35,6 +35,14 @@ export class Utils {
         return this.formatDate(new Date());
     }
 
+    formattedHour() {
+        let dt  = new Date();
+        let hor = ("0" + dt.getHours()).slice(-2);
+        let min = ("0" + dt.getMinutes()).slice(-2);
+        let sec = ("0" + dt.getSeconds()).slice(-2);
+        return hor + ":" +  min + ":" +  sec;
+    }
+
     formatDate(_date) {
         var day        = _date.getDate();
         var monthIndex = _date.getMonth();

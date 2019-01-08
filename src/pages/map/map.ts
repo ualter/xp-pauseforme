@@ -38,7 +38,7 @@ var baseLayers = {
   "Default":   standardTile
 };
 
-const RETRIES_ATTEMPTING_CONNECT = 30;
+const RETRIES_ATTEMPTING_CONNECT = 5;
 const DEFAULT_LONGITUDE          = 41.5497;
 const DEFAULT_LATITUDE           = 2.0989;
 const enum HEADING_OPTION {
@@ -66,11 +66,12 @@ var buttonPlayPause;
 var buttonFollowAirplane;
 var buttonGoToLocation;
 var buttonDisconnect;
-var threadAttempConnection;
 var identificationName;
 var staticXPlaneWsServer;
 var staticAlertController;
 var attempingConnectTimes = 0;
+var toastPresented;
+var threadAttemptToConnect;
 
 enum State {
   DISCONNECTED = 0,
@@ -190,8 +191,8 @@ export class MapPage {
 
     // Connection is still OPEN
     if ( this.xpWsSocket.getWebSocket() && this.xpWsSocket.getWebSocket().readyState == WS_OPEN ) {
-        // Check Connection State
-        // If were DISCONNECTED before, then now should be CONNECTED
+        // Check Previous Connection State
+        // If were DISCONNECTED before, then now should be prepared in CONNECTED mode
         if ( !this.isConnectedWithXPlane && this.connectMeState ) {
           this.changeStateToConnected();
         }
@@ -215,28 +216,46 @@ export class MapPage {
     }
   }
 
+  showToastPauseReason(json) {
+    if ( this.connectionState != State.PAUSED ) {
+        let msgs = json.message.split(",");
+        let msg;
+        if ( msgs.length > 1 ) {
+          msg = msgs[1];
+          msg = msg.replace(new RegExp("/","g")," / ");
+          msg = "[ Paused at " + this.utils.formattedHour() + " ] Reason ►► " + msg;
+        } else {
+          msg = "[ Paused at " + this.utils.formattedHour() + " ] Reason ►► " + json.message + " by X-Plane";
+        }
+        toastPresented = this.toastCtrl.create({
+            message: msg,
+            position: 'top',
+            showCloseButton: true,
+            closeButtonText: 'OK'
+        });
+        toastPresented.present();
+    }
+  }
+  dismissToastPauseReason() {
+    if ( toastPresented ) {
+      toastPresented.dismiss();
+      toastPresented = null;
+    }
+  }
+
   onMessageCommand(json) {
-    this.utils.trace(json.message);
+    this.utils.trace("onMessageCommand: " + json.message);
     if ( json.message.startsWith("PAUSED") ) {
       var event = new Event('PAUSED');
       buttonPlayPause.dispatchEvent(event);
-      if ( this.connectionState != State.PAUSED ) {
-          const toast = this.toastCtrl.create({
-              message: json.message,
-              position: 'top',
-              showCloseButton: true,
-              closeButtonText: 'Ok'
-              //duration: 10000
-          });
-          toast.present();
-      }
+      this.showToastPauseReason(json);
       this.changeStateToPaused();
-
     } else
     if ( json.message == "PLAY" ) {
       var event = new Event('PLAY');
       buttonPlayPause.dispatchEvent(event);
       this.changeStateToUnpaused();
+      this.dismissToastPauseReason();
     } else
     if ( json.message == "STOPPED" ) {
       var event = new Event('STOPPED');
@@ -268,7 +287,6 @@ export class MapPage {
     airplanePopup.setLatLng(newLatLng);
     let htmlPopup = this.htmlPopup(airplaneData);
     airplaneMarker.setPopupContent(htmlPopup);
-    
 
     // Rotate the Icon according with the bearing
     // Two options to rotate the Icon in Degrees according to the Heading of the Airplane
@@ -535,7 +553,7 @@ export class MapPage {
               MapPage.myself.utils.warn("Latitude were NaN, set to " + DEFAULT_LATITUDE);
               userLatitude = DEFAULT_LATITUDE;
             }
-            map.flyTo({lon: userLongitude, lat: userLatitude}, MAX_ZOOM - 3, ZOOM_PAN_OPTIONS);
+            map.flyTo({lon: userLongitude, lat: userLatitude}, MAX_ZOOM - 4, ZOOM_PAN_OPTIONS);
             container.style.color = "rgba(47, 79, 79, 0.8)";
           }
           buttonGoToLocation = container;
@@ -566,7 +584,6 @@ export class MapPage {
             followAirplane = !followAirplane;
             if ( followAirplane ) {
               container.style.color = "rgba(0, 0, 0, 0.8)";
-
               if ( isNaN(longitude) ) {
                 MapPage.myself.utils.warn("Longitude were NaN, set to " + DEFAULT_LONGITUDE);
                 longitude = DEFAULT_LONGITUDE;
@@ -575,7 +592,6 @@ export class MapPage {
                 MapPage.myself.utils.warn("Latitude were NaN, set to " + DEFAULT_LATITUDE);
                 latitude = DEFAULT_LATITUDE;
               }
-
               map.flyTo({lon: longitude, lat: latitude}, map.getZoom(), ZOOM_PAN_OPTIONS);
             } else {
               container.style.color = "rgba(47, 79, 79, 0.8)";
@@ -761,13 +777,13 @@ export class MapPage {
 
   disconnect() {
     MapPage.sendMessageToXPlane("{CLOSE}", identificationName);
-    clearInterval(threadAttempConnection);
     this.subscription.complete();
     this.subscription.unsubscribe();
     this.switchConnectMeStateToOFF();
     this.changeStateToDisconnected();
     this.xpWsSocket.disconnect();
     this.connectMeDisable = false;
+    attempingConnectTimes = 0;
 
     if (airplaneMarker) {
       this.utils.trace("Removed the AirplaneMarker");
@@ -779,8 +795,9 @@ export class MapPage {
   connectXPlane() {
     this.subscription = this.xpWsSocket.connect(wsURL).subscribe(
         payload => {
-          clearInterval(threadAttempConnection);
+          // Receiving the X-Plane Message
           this.onMessageReceived(payload);
+          // Dismiss the signal of attempt to connect with X-Plane
           this.hideContactingXPlaneImg();
         },
         error => {
@@ -795,19 +812,25 @@ export class MapPage {
 
   changeStateToConnected() {
     this.utils.info("CONNECTED to X-Plane through " + wsURL);
-    this.connectionState        = State.CONNECTED;
-    this.isConnectedWithXPlane  = true;
-    this.messageBarIcon         = "sunny";
-    this.messageBarText         = "CONNECTED";
-    this.messageBarColorIcon    = "secondary";
-    this.messageBarColor        = "blue";
+    clearInterval(threadAttemptToConnect);
+    attempingConnectTimes            = 0;
+    this.connectionState             = State.CONNECTED;
+    this.isConnectedWithXPlane       = true;
+    this.messageBarIcon              = "sunny";
+    this.messageBarText              = "CONNECTED";
+    this.messageBarColorIcon         = "secondary";
+    this.messageBarColor             = "blue";
     setTimeout(() => {   
       this.visibilityMessageBar      = "hidden";
       this.visibilityButtonConnectMe = "hidden"; 
       this.visibilityContacting      = "hidden"; 
     },fadeInOut+500);
     setTimeout(() => {   
-      this.connectMeDisable          = true;
+      this.connectMeDisable            = true;
+      // Starting in following airplane mode
+      followAirplane                   = true;
+      buttonFollowAirplane.style.color = "rgba(0, 0, 0, 0.8)";
+      map.flyTo({lon: longitude, lat: latitude}, map.getZoom(), ZOOM_PAN_OPTIONS);
     },fadeInOut+600);
     
   }
@@ -822,9 +845,11 @@ export class MapPage {
     this.messageBarColorIcon    = "";
     this.connectMeDisable       = false;
     setTimeout(() => {  
-      this.visibilityMessageBar      = "shown";
-      this.visibilityButtonConnectMe = "shown";
-      this.messageBarColor           = "red";
+      this.visibilityMessageBar        = "shown";
+      this.visibilityButtonConnectMe   = "shown";
+      this.messageBarColor             = "red";
+      followAirplane                   = false;
+      buttonFollowAirplane.style.color = "rgba(47, 79, 79, 0.8)";
     },fadeInOut+500);
   }
 
@@ -862,25 +887,38 @@ export class MapPage {
     this.utils.trace("Connect Me State change to:" + event);
     if (event == true) {
       this.visibilityContacting = "shown"; 
-      threadAttempConnection = setInterval(() => {
-        this.attempToConnect();
-      },fadeInOut);
+      this.connect();
+      this.activateThreadConnection();
     } else {
-      if (threadAttempConnection) {
-        this.stopAttemptingToConnect();
-      }
+      this.stopAttemptingToConnect();
     }
+  }
+
+  activateThreadConnection() {
+    threadAttemptToConnect = setInterval(() => {
+      if ( this.xpWsSocket && this.xpWsSocket.getWebSocket() &&
+           this.xpWsSocket.getWebSocket().readyState == WS_OPEN ) {
+        this.utils.info("Thread detecting CONNECTED state");
+      } else {
+        var st = this.xpWsSocket.getWebSocket() ? this.xpWsSocket.getWebSocket().readyState : "null";
+        this.utils.info("Thread detecting DISCONNECTED state");
+        this.attempToConnect();
+      }
+    },2000);
   }
 
   attempToConnect() {
     if ( attempingConnectTimes > (RETRIES_ATTEMPTING_CONNECT-1) ) {
-      clearInterval(threadAttempConnection);
+      clearInterval(threadAttemptToConnect);
+      threadAttemptToConnect = null;
       let alert = staticAlertController.create({
       title: 'Warning',
       message: `
-        <p > <b>` + attempingConnectTimes + `</b> attempts were made already to contact X-Plane. Did you check the address?</p>
-        IP: <font color="blue"><b>` + this.xplaneAddress + `</b></font><br>
-        Port: <font color="blue"><b>` + this.xplanePort + `</b></font><br>
+        <p > <b>` + attempingConnectTimes + `</b> attempts were already made to contact X-Plane. Let's see...<br><br><b>1)</b> 
+        Did you check the address?<br>
+        <b>IP</b>: <font color="blue"><b>` + this.xplaneAddress + `</b></font><br>
+        <b>Port</b>: <font color="blue"><b>` + this.xplanePort + `</b></font><br><br>
+        <b>2)</b> Are you sure the PauseForMe plugin Transmitter is started?</p>
       `,
       buttons: [
         {
@@ -894,9 +932,8 @@ export class MapPage {
           text: 'Keep trying',
           handler: () => {
             attempingConnectTimes = 0;
-            threadAttempConnection = setInterval(() => {
-              this.attempToConnect();
-            },fadeInOut);
+            this.connect();
+            this.activateThreadConnection();
           }
         }
       ]
@@ -908,11 +945,11 @@ export class MapPage {
   }
 
   stopAttemptingToConnect() {
+    clearInterval(threadAttemptToConnect);
     this.switchConnectMeStateToOFF();
     attempingConnectTimes = 0;
     this.utils.trace("Stop attemping to contact X-Plane");
     this.hideContactingXPlaneImg();
-    clearInterval(threadAttempConnection);
   }
 
   switchConnectMeStateToOFF() {

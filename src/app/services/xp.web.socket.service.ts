@@ -17,7 +17,11 @@ export class XpWebSocketService {
   }
 
   private create(url): Rx.Subject<MessageEvent> {
-    this.ws = new WebSocket(url);
+    try {
+      this.ws = new WebSocket(url);
+    } catch (error) {
+      console.log(error);
+    }
 
     let observable = Rx.Observable.create( 
       (obs : Rx.Observer<MessageEvent>) =>  {
