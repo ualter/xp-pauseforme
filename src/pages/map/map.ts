@@ -1,3 +1,17 @@
+/**
+ * - Implement on PauseForMe Plugin to send more info about the next FMS/GPS destination (lat,lon,time,etc.) to PauseForMe App
+ * - Show Marker on MAP for the next FMS/GPS destination on PauseForMe App
+ * - Show a Trace on Map for the next FMS/GPS destination on PauseForMe App
+ * - Show litte toast (low center) of the next FMS/GPS Destination and distance/time to reach it on PauseForMe App
+ * - Show Page Info to view all the parameters set to pause at the PauseForMe Plugin on PauseForMe App
+ *      * Show all or only the enabled???
+ * - Implement on PauseForMe Plugin service to allow the PauseForMe App retrieve info of the nearest Navaids regarding the Airplane's location
+ * - Show the nearest Navaids on Map on PauseForMe App
+ *      * Settings to on/off which of the navaids must be shown (Airport, VOR, NDB, Fix, DME)
+ * - Show the Trace of the Airplane's flight?
+ * 
+ */
+
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import { Geolocation } from '@ionic-native/geolocation';
@@ -188,7 +202,6 @@ export class MapPage {
   onMessageReceived(payload) {
     var origin  = payload.origin;
     var message = payload.data;
-
     // Connection is still OPEN
     if ( this.xpWsSocket.getWebSocket() && this.xpWsSocket.getWebSocket().readyState == WS_OPEN ) {
         // Check Previous Connection State
@@ -265,6 +278,7 @@ export class MapPage {
   }
 
   onMessageAirplane(json) {
+    console.log(json);
     // Bearing the Airplane new given Lat/Lng according with the last Lat/Lng
     let bearing = undefined;
     if ( /* SELECTED_HEADING_OPTION == HEADING_OPTION.CALCULATED && */ (lastLat && lastLng) && (lastLat != json.airplane.lat || lastLng != json.airplane.lng) ) {
