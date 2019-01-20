@@ -1,5 +1,5 @@
 /**
- * - Implement on PauseForMe Plugin to send more info about the next FMS/GPS destination (lat,lon,time,etc.) to PauseForMe App
+ * OK - Implement on PauseForMe Plugin to send more info about the next FMS/GPS destination (lat,lon,time,etc.) to PauseForMe App
  * - Show Marker on MAP for the next FMS/GPS destination on PauseForMe App
  * - Show a Trace on Map for the next FMS/GPS destination on PauseForMe App
  * - Show litte toast (low center) of the next FMS/GPS Destination and distance/time to reach it on PauseForMe App
@@ -25,10 +25,6 @@ import { XpWebSocketService } from '../../app/services/Xp.web.socket.service';
 
 const MAX_ZOOM                    = 15;
 const ZOOM_PAN_OPTIONS            = {animate: true, duration: 0.25, easeLinearity: 1.0, noMoveStart: false}; /*{animate: true, duration: 3.5, easeLinearity: 1.0, noMoveStart: false}*/
-const AIRPLANE_ICON_WIDTH         = 62;
-const AIRPLANE_ICON_HEIGHT        = 59;
-const AIRPLANE_ICON_ANCHOR_WIDTH  = AIRPLANE_ICON_WIDTH / 2;
-const AIRPLANE_ICON_ANCHOR_HEIGHT = AIRPLANE_ICON_HEIGHT - (AIRPLANE_ICON_HEIGHT - ((AIRPLANE_ICON_HEIGHT*60)/100));
 
 const WS_CONNECTING = 0;
 const WS_OPEN       = 1;
@@ -73,6 +69,7 @@ var lastLat;
 var lastLng;     
 var lastBearing;
 var airplaneMarker;
+var nextDestinationMarker;
 var airplanePopup;    
 var followAirplane;
 var gamePaused;
@@ -93,6 +90,11 @@ enum State {
   PAUSED = 2,
 }
 
+const AIRPLANE_ICON_WIDTH         = 62;
+const AIRPLANE_ICON_HEIGHT        = 59;
+const AIRPLANE_ICON_ANCHOR_WIDTH  = AIRPLANE_ICON_WIDTH / 2;
+const AIRPLANE_ICON_ANCHOR_HEIGHT = AIRPLANE_ICON_HEIGHT - (AIRPLANE_ICON_HEIGHT - ((AIRPLANE_ICON_HEIGHT*60)/100));
+
 var AIRPLANE_ICON = leaflet.icon({
   iconUrl:      'assets/imgs/airplane-a320.png',
   shadowUrl:    'assets/imgs/airplane-a320-shadow-0.png',
@@ -101,6 +103,21 @@ var AIRPLANE_ICON = leaflet.icon({
   iconAnchor:   [AIRPLANE_ICON_ANCHOR_WIDTH, AIRPLANE_ICON_ANCHOR_HEIGHT],      // point of the icon which will correspond to marker's location
   shadowAnchor: [AIRPLANE_ICON_ANCHOR_WIDTH-5, AIRPLANE_ICON_ANCHOR_HEIGHT-4],  // the same for the shadow
   popupAnchor:  [0, (AIRPLANE_ICON_HEIGHT/2) * -1]                                                          // point from which the popup should open relative to the iconAnchor
+});
+
+const NDB_ICON_WIDTH         = 100;
+const NDB_ICON_HEIGHT        = 50;
+const NDB_ICON_ANCHOR_WIDTH  = NDB_ICON_WIDTH / 4;
+const NDB_ICON_ANCHOR_HEIGHT = NDB_ICON_WIDTH / 2;
+
+var NDB_ICON = leaflet.icon({
+  iconUrl:      'assets/imgs/icon_ndb.png',
+  shadowUrl:    'assets/imgs/icon_ndb_shadow.png',
+  iconSize:     [NDB_ICON_WIDTH,NDB_ICON_HEIGHT],
+  shadowSize:   [NDB_ICON_WIDTH,NDB_ICON_HEIGHT],
+  iconAnchor:   [NDB_ICON_ANCHOR_WIDTH,NDB_ICON_ANCHOR_HEIGHT],  // point of the icon which will correspond to marker's location
+  shadowAnchor: [NDB_ICON_ANCHOR_WIDTH,NDB_ICON_ANCHOR_HEIGHT],  // the same for the shadow
+  popupAnchor:  [0,NDB_ICON_HEIGHT]  // point from which the popup should open relative to the iconAnchor
 });
 
 @Component({
@@ -279,10 +296,10 @@ export class MapPage {
   }
 
   onMessageAirplane(json) {
-    console.log(json);
     // Bearing the Airplane new given Lat/Lng according with the last Lat/Lng
     let bearing = undefined;
-    if ( /* SELECTED_HEADING_OPTION == HEADING_OPTION.CALCULATED && */ (lastLat && lastLng) && (lastLat != json.airplane.lat || lastLng != json.airplane.lng) ) {
+    if ( /* SELECTED_HEADING_OPTION == HEADING_OPTION.CALCULATED && */ 
+      (lastLat && lastLng) && (lastLat != json.airplane.lat || lastLng != json.airplane.lng) ) {
       bearing = this.aviation.bearing(json.airplane.lng,json.airplane.lat,lastLng,lastLat);
     } 
     // Reposition the Airplane new give Lat/Lng
@@ -293,7 +310,6 @@ export class MapPage {
   
   updateAirplanePosition(airplaneData, bearing) {
     this.utils.trace("Airplane new position (Lat/Lng): " + airplaneData.lat + ":" + airplaneData.lng);
-
     var newLatLng = new leaflet.LatLng(airplaneData.lat,airplaneData.lng);
     if (!airplaneMarker) {
       this.createAirplaneMarker(airplaneData.lat,airplaneData.lng);
@@ -302,6 +318,9 @@ export class MapPage {
     airplanePopup.setLatLng(newLatLng);
     let htmlPopup = this.htmlPopup(airplaneData);
     airplaneMarker.setPopupContent(htmlPopup);
+
+    // Draw next destination marker (if exists)
+    this.createUpdateNextDestinationMarker(airplaneData);
 
     // Rotate the Icon according with the bearing
     // Two options to rotate the Icon in Degrees according to the Heading of the Airplane
@@ -324,6 +343,31 @@ export class MapPage {
 
     latitude  = airplaneData.lat;
     longitude = airplaneData.lng;
+  }
+
+  /*
+   * Create or Update the next destination point if it was sent and programmed by X-Plane plugin
+   */
+  createUpdateNextDestinationMarker(airplaneData) {
+    if ( !nextDestinationMarker &&
+       (airplaneData.nextDestination.fms.name != "NOT FOUND" || airplaneData.nextDestination.gps.name != "NOT FOUND") ) {
+        let nextDest;
+        if ( airplaneData.nextDestination.fms.name != "NOT FOUND" ) {
+          nextDest = airplaneData.nextDestination.fms;
+        } else 
+        if ( airplaneData.nextDestination.gps.name != "NOT FOUND" ) {
+          nextDest = airplaneData.nextDestination.gps;
+        }
+        if ( nextDest ) { 
+          console.log(airplaneData.nextDestination.fms.name);
+          this.utils.trace("Adding next destination marker to " + nextDest.latitude + ":" + nextDest.longitude);
+          nextDestinationMarker = leaflet.marker([nextDest.latitude,nextDest.longitude], {icon: NDB_ICON}).addTo(map);
+
+          let nextDestinationPopUp = airplaneMarker.bindPopup("<b>Hello world!</b><br>" + airplaneData.nextDestination.fms.name);
+          nextDestinationPopUp.setLatLng([nextDest.latitude,nextDest.longitude]);
+          //leaflet.marker([nextDest.latitude,nextDest.longitude]).addTo(map);
+        }
+    }
   }
 
   adaptAngleForIcon(angle) {
@@ -418,7 +462,7 @@ export class MapPage {
         userLongitude = resp.coords.longitude;
         this.utils.info("LatLng User Location: " + userLatitude + ":" + userLongitude);
         var latLng = leaflet.latLng(userLatitude, userLongitude);
-        userMarker = leaflet.marker([userLatitude, userLongitude]).addTo(map);
+        //userMarker = leaflet.marker([userLatitude, userLongitude]).addTo(map);
         map.flyTo(latLng, MAX_ZOOM - 4, ZOOM_PAN_OPTIONS);
       }      
     }).catch((error) => {
@@ -462,6 +506,22 @@ export class MapPage {
   }
 
   zoomListener() {
+    // Check changes that must be done according to the Zoom level (mainly icons size)
+    MapPage.myself.checkZoomLevelChangesOnMap();
+
+    if ( followAirplane && map && leaflet ) {
+      try {
+        map.panTo(leaflet.latLng(latitude,longitude));
+      } catch (error) {
+        MapPage.myself.utils.error(error);
+      }
+    }
+  }
+
+  /*
+   * Check changes that must be done according to the Zoom level
+   */
+  checkZoomLevelChangesOnMap() {
     var size = [0, 0];
     var zoom = map.getZoom();
     if ( zoom == 18 ) {
@@ -513,28 +573,42 @@ export class MapPage {
       size[1] = 16;
     }
 
-    AIRPLANE_ICON.options.iconSize[0]   = (AIRPLANE_ICON_WIDTH   - size[0]);
-    AIRPLANE_ICON.options.iconSize[1]   = (AIRPLANE_ICON_HEIGHT  - size[1]);
-    AIRPLANE_ICON.options.shadowSize[0] = (AIRPLANE_ICON_WIDTH   - size[0]);
-    AIRPLANE_ICON.options.shadowSize[1] = (AIRPLANE_ICON_HEIGHT  - size[1]);
+    this.adaptAirplaneIconSizeToZoom(size);
+    this.adaptNextDestinationIconSizeToZoom(size);
+  }
 
-    var widthAnchor  = (AIRPLANE_ICON.options.iconSize[0] / 2);
-    var heightAnchor = (AIRPLANE_ICON.options.iconSize[1] - ((AIRPLANE_ICON.options.iconSize[1] * 50)/100));
-    AIRPLANE_ICON.options.iconAnchor[0]   = widthAnchor;
-    AIRPLANE_ICON.options.iconAnchor[1]   = heightAnchor;
-    AIRPLANE_ICON.options.shadowAnchor[0] = widthAnchor  - 5;
-    AIRPLANE_ICON.options.shadowAnchor[1] = heightAnchor - 4;
+  adaptAirplaneIconSizeToZoom(size) {
+     // Adapt the Airplane's Icon Size to the current Zoom Level
+     AIRPLANE_ICON.options.iconSize[0]   = (AIRPLANE_ICON_WIDTH   - size[0]);
+     AIRPLANE_ICON.options.iconSize[1]   = (AIRPLANE_ICON_HEIGHT  - size[1]);
+     AIRPLANE_ICON.options.shadowSize[0] = (AIRPLANE_ICON_WIDTH   - size[0]);
+     AIRPLANE_ICON.options.shadowSize[1] = (AIRPLANE_ICON_HEIGHT  - size[1]);
+     var widthAnchor  = (AIRPLANE_ICON.options.iconSize[0] / 2);
+     var heightAnchor = (AIRPLANE_ICON.options.iconSize[1] - ((AIRPLANE_ICON.options.iconSize[1] * 50)/100));
+     AIRPLANE_ICON.options.iconAnchor[0]   = widthAnchor;
+     AIRPLANE_ICON.options.iconAnchor[1]   = heightAnchor;
+     AIRPLANE_ICON.options.shadowAnchor[0] = widthAnchor  - 5;
+     AIRPLANE_ICON.options.shadowAnchor[1] = heightAnchor - 4;
+     if ( airplaneMarker ) {
+       airplaneMarker.setIcon(AIRPLANE_ICON);
+       MapPage.rotateMarker(lastBearing);
+     }
+  }
 
-    if ( airplaneMarker ) {
-      airplaneMarker.setIcon(AIRPLANE_ICON);
-      MapPage.rotateMarker(lastBearing);
-    }
-    if ( followAirplane && map && leaflet ) {
-      try {
-        map.panTo(leaflet.latLng(latitude,longitude));
-      } catch (error) {
-        MapPage.myself.utils.error(error);
-      }
+  adaptNextDestinationIconSizeToZoom(size) {
+    // Adapt the Next Destinations's Icon Size to the current Zoom Level
+    NDB_ICON.options.iconSize[0]   = (NDB_ICON_WIDTH   - size[0]);
+    NDB_ICON.options.iconSize[1]   = (NDB_ICON_HEIGHT  - size[1]);
+    NDB_ICON.options.shadowSize[0] = (NDB_ICON_WIDTH   - size[0]);
+    NDB_ICON.options.shadowSize[1] = (NDB_ICON_HEIGHT  - size[1]);
+    var widthAnchor  = (NDB_ICON.options.iconSize[0] / 4);
+    var heightAnchor = (NDB_ICON.options.iconSize[0] / 2);
+    NDB_ICON.options.iconAnchor[0]   = widthAnchor;
+    NDB_ICON.options.iconAnchor[1]   = heightAnchor;
+    NDB_ICON.options.shadowAnchor[0] = widthAnchor;
+    NDB_ICON.options.shadowAnchor[1] = heightAnchor;
+    if ( nextDestinationMarker ) {
+      nextDestinationMarker.setIcon(NDB_ICON);
     }
   }
 
