@@ -70,6 +70,7 @@ var lastLng;
 var lastBearing;
 var airplaneMarker;
 var nextDestinationMarker;
+var nextDestinationPopUp;
 var airplanePopup;    
 var followAirplane;
 var gamePaused;
@@ -117,7 +118,7 @@ var NDB_ICON = leaflet.icon({
   shadowSize:   [NDB_ICON_WIDTH,NDB_ICON_HEIGHT],
   iconAnchor:   [NDB_ICON_ANCHOR_WIDTH,NDB_ICON_ANCHOR_HEIGHT],  // point of the icon which will correspond to marker's location
   shadowAnchor: [NDB_ICON_ANCHOR_WIDTH,NDB_ICON_ANCHOR_HEIGHT],  // the same for the shadow
-  popupAnchor:  [0,NDB_ICON_HEIGHT]  // point from which the popup should open relative to the iconAnchor
+  popupAnchor:  [0,((NDB_ICON_HEIGHT/2) + 23) * -1]  // point from which the popup should open relative to the iconAnchor
 });
 
 @Component({
@@ -349,6 +350,7 @@ export class MapPage {
    * Create or Update the next destination point if it was sent and programmed by X-Plane plugin
    */
   createUpdateNextDestinationMarker(airplaneData) {
+    console.log(airplaneData);
     if ( !nextDestinationMarker &&
        (airplaneData.nextDestination.fms.name != "NOT FOUND" || airplaneData.nextDestination.gps.name != "NOT FOUND") ) {
         let nextDest;
@@ -363,7 +365,7 @@ export class MapPage {
           this.utils.trace("Adding next destination marker to " + nextDest.latitude + ":" + nextDest.longitude);
           nextDestinationMarker = leaflet.marker([nextDest.latitude,nextDest.longitude], {icon: NDB_ICON}).addTo(map);
 
-          let nextDestinationPopUp = airplaneMarker.bindPopup("<b>Hello world!</b><br>" + airplaneData.nextDestination.fms.name);
+          nextDestinationPopUp = nextDestinationMarker.bindPopup("<b>Hello world!</b><br>" + airplaneData.nextDestination.fms.name);
           nextDestinationPopUp.setLatLng([nextDest.latitude,nextDest.longitude]);
           //leaflet.marker([nextDest.latitude,nextDest.longitude]).addTo(map);
         }
