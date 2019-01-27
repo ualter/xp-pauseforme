@@ -22,6 +22,8 @@ import { Aviation } from '../../app/services/Aviation';
 import { DataService } from '../../app/services/DataService';
 import { Utils } from '../../app/services/Utils';
 import { XpWebSocketService } from '../../app/services/Xp.web.socket.service';
+import { LiteralMapEntry } from '@angular/compiler/src/output/output_ast';
+import { Router } from '../../app/services/Router';
 
 const MAX_ZOOM                    = 15;
 const ZOOM_PAN_OPTIONS            = {animate: true, duration: 0.25, easeLinearity: 1.0, noMoveStart: false}; /*{animate: true, duration: 3.5, easeLinearity: 1.0, noMoveStart: false}*/
@@ -84,6 +86,7 @@ var staticAlertController;
 var attempingConnectTimes = 0;
 var toastPresented;
 var threadAttemptToConnect;
+var nextDestVector;
 
 enum State {
   DISCONNECTED = 0,
@@ -188,7 +191,8 @@ export class MapPage {
     public toastCtrl: ToastController,
     public xpWsSocket: XpWebSocketService, 
     public utils: Utils,
-    public aviation: Aviation) {
+    public aviation: Aviation,
+    public router: Router) {
 
     staticXPlaneWsServer  = xpWsSocket;
     staticAlertController = alertCtrl;
@@ -317,11 +321,11 @@ export class MapPage {
     }
     airplaneMarker.setLatLng(newLatLng);
     airplanePopup.setLatLng(newLatLng);
-    let htmlPopup = this.htmlPopup(airplaneData);
+    let htmlPopup = this.airplaneHtmlPopup(airplaneData);
     airplaneMarker.setPopupContent(htmlPopup);
 
     // Draw next destination marker (if exists)
-    this.createUpdateNextDestinationMarker(airplaneData);
+    this.router.createUpdateNextDestinationMarker(airplaneData);
 
     // Rotate the Icon according with the bearing
     // Two options to rotate the Icon in Degrees according to the Heading of the Airplane
@@ -344,32 +348,6 @@ export class MapPage {
 
     latitude  = airplaneData.lat;
     longitude = airplaneData.lng;
-  }
-
-  /*
-   * Create or Update the next destination point if it was sent and programmed by X-Plane plugin
-   */
-  createUpdateNextDestinationMarker(airplaneData) {
-    console.log(airplaneData);
-    if ( !nextDestinationMarker &&
-       (airplaneData.nextDestination.fms.name != "NOT FOUND" || airplaneData.nextDestination.gps.name != "NOT FOUND") ) {
-        let nextDest;
-        if ( airplaneData.nextDestination.fms.name != "NOT FOUND" ) {
-          nextDest = airplaneData.nextDestination.fms;
-        } else 
-        if ( airplaneData.nextDestination.gps.name != "NOT FOUND" ) {
-          nextDest = airplaneData.nextDestination.gps;
-        }
-        if ( nextDest ) { 
-          console.log(airplaneData.nextDestination.fms.name);
-          this.utils.trace("Adding next destination marker to " + nextDest.latitude + ":" + nextDest.longitude);
-          nextDestinationMarker = leaflet.marker([nextDest.latitude,nextDest.longitude], {icon: NDB_ICON}).addTo(map);
-
-          nextDestinationPopUp = nextDestinationMarker.bindPopup("<b>Hello world!</b><br>" + airplaneData.nextDestination.fms.name);
-          nextDestinationPopUp.setLatLng([nextDest.latitude,nextDest.longitude]);
-          //leaflet.marker([nextDest.latitude,nextDest.longitude]).addTo(map);
-        }
-    }
   }
 
   adaptAngleForIcon(angle) {
@@ -505,6 +483,7 @@ export class MapPage {
     leaflet.control.layers(baseLayers).addTo(map);
 
     map.on('zoomend', this.zoomListener);
+    this.router.setMap(map);
   }
 
   zoomListener() {
@@ -1052,30 +1031,86 @@ export class MapPage {
     this.updateConnectMeState(this.connectMeState);
   }
 
-  htmlPopup(airplaneData) {
+  airplaneHtmlPopup(airplaneData) {
     let paddingValue  = 3;
     let fontSizeLabel = 12;
     let fontSizeValue = 12;
     let fontSizeUnit  = 11;
-    let autopilotState = airplaneData.autopilot.on == 1 ? "ON" : "OFF";
-    var html = `
-      <span style="font-size:12px;"><b>INFO</b></span>
-      <hr>
-      <table border=0 cellspacing=0 cellpadding=0>
+
+    let nextDest;
+    let distanceTime;
+    // Check if there's a next destination programmed
+    if ( airplaneData.nextDestination.fms.status != 0 || airplaneData.nextDestination.gps.name != "NOT FOUND" ) {
+        if ( airplaneData.nextDestination.fms.status != 0 ) {
+            nextDest     = airplaneData.nextDestination.fms;
+            distanceTime = airplaneData.nextDestination.fms.fmsTime;
+        } else 
+        if ( airplaneData.nextDestination.gps.name != "NOT FOUND" ) {
+            nextDest     = airplaneData.nextDestination.gps;
+            distanceTime = airplaneData.nextDestination.gps.dmeDistance;
+        }
+    }
+    let destinationCell = "";
+    if (nextDest) {
+      destinationCell = `
       <tr>
         <td>
-          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Heading..:</span>
+          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Destination.....:</span>
         </td>
-        <td width="40px" align="right"  style="padding-right:` + paddingValue + `px;">
+        <td align="right" style="padding-right:` + paddingValue + `px;">
+          <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + nextDest.id + `</span>
+        </td>
+        <td>
+          <span style="color:black;font-weight:bold;font-size:` + fontSizeUnit +`px;">` + nextDest.type + `</span>
+        </td>
+      </tr>
+      <tr>
+      <td>
+        <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Distance........:</span>
+      </td>
+      <td align="right" style="padding-right:` + paddingValue + `px;">
+        <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + nextDest.distance + `</span>
+      </td>
+      <td>
+      <span style="color:black;font-weight:bold;font-size:` + fontSizeUnit +`px;">nm</span>
+      </td>
+    </tr>
+      <tr>
+        <td>
+          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">ETA.............:</span>
+        </td>
+        <td align="right" style="padding-right:` + paddingValue + `px;">
+          <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + distanceTime + `</span>
+        </td>
+        <td>
+        </td>
+      </tr>
+      `;
+    }
+
+   
+    let autopilotState = airplaneData.autopilot.on == 1 ? "ON" : "OFF";
+    var html = `
+      <span style="font-size:12px;"><b>AIRPLANE</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+      <hr>
+      <table border=0 cellspacing=0 cellpadding=0 width="100%">
+      <tr>
+        <td>
+          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Heading.........:</span>
+        </td>
+        <td align="right" width="40px" align="right"  style="padding-right:` + paddingValue + `px;">
           <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + airplaneData.heading + `</span>
+        </td>
+        <td>
+          <span style="color:black;font-weight:bold;font-size:` + fontSizeValue +`px;">°</span>
         </td>
       </tr>
       <tr>
         <td>
-          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Altitude.:</span>
+          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Altitude........:</span>
         </td>
         <td align="right" style="padding-right:` + paddingValue + `px;">
-          <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + this.utils.formatNumber(airplaneData.currentAltitude) + `</span>
+          <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + this.utils.formatNumber(airplaneData.currentAltitude2) + `</span>
         </td>
         <td>
           <span style="color:black;font-weight:bold;font-size:` + fontSizeUnit +`px;">feet</span>
@@ -1083,7 +1118,7 @@ export class MapPage {
       </tr>
       <tr>
         <td>
-          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Vert.Spd.:</span>
+          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Vertical Speed..:</span>
         </td>
         <td align="right" style="padding-right:` + paddingValue + `px;">
           <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + airplaneData.vsFpm + `</span>
@@ -1094,10 +1129,10 @@ export class MapPage {
       </tr>
       <tr>
         <td>
-          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Airspeed.:</span>
+          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Airspeed........:</span>
         </td>
         <td align="right" style="padding-right:` + paddingValue + `px;">
-          <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + airplaneData.trueAirspeed + `</span>
+          <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + airplaneData.airspeed + `</span>
         </td>
         <td>
           <span style="color:black;font-weight:bold;font-size:` + fontSizeUnit +`px;">kts</span>
@@ -1105,7 +1140,7 @@ export class MapPage {
       </tr>
       <tr>
         <td>
-          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Ground...:</span>&nbsp;&nbsp;
+          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Ground Speed....:</span>&nbsp;&nbsp;
         </td>
         <td align="right" style="padding-right:` + paddingValue + `px;">
           <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + airplaneData.groundspeed + `</span>
@@ -1114,18 +1149,20 @@ export class MapPage {
           <span style="color:black;font-weight:bold;font-size:` + fontSizeUnit +`px;">kts</span>
         </td>
       </tr>
-      <tr>
-        <td>
-          <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Autopilot:</span>
-        </td>
-        <td align="right" style="padding-right:` + paddingValue + `px;">
-          <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + autopilotState + `</span>
-        </td>
-        <td>
-        </td>
-      </tr>
+      `+ destinationCell + `
       </table>
     `;
+
+    //<tr>
+      //  <td>
+      //    <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Autopilot.......:</span>
+      //  </td>
+      //  <td align="right" style="padding-right:` + paddingValue + `px;">
+      //    <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + autopilotState + `</span>
+      //  </td>
+      //  <td>
+      //  </td>
+      //</tr>
     return html;
   }
 

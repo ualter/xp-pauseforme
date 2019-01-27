@@ -15,6 +15,7 @@ import { Utils } from './services/Utils';
 import { Aviation } from './services/Aviation';
 import { DataService } from './services/DataService';
 import { DataSettings } from './services/DataSettings';
+import { Router } from './services/Router';
 
 @NgModule({
   declarations: [
@@ -45,6 +46,7 @@ import { DataSettings } from './services/DataSettings';
     Aviation,
     DataService,
     DataSettings,
+    Router,
     {provide: ErrorHandler, useClass: IonicErrorHandler}
   ]
 })
