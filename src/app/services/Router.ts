@@ -113,13 +113,13 @@ export class Router {
                     }).openTooltip();*/
 
                     // Make the plane position as the first FROM 
-                    var nextDestAirplane       = {};
+                    let nextDestAirplane       = <any>{};
                     nextDestAirplane.latitude  = airplaneData.lat;
                     nextDestAirplane.longitude = airplaneData.lng;
                     nextDestAirplane.name      = "Last Location";
                     nextDestAirplane.type      = "Last Location";
                     nextDestAirplane.id        = "";
-
+                    
                     let route  = new Route();
                     route.markerTo     = nextDestinationMarker;
                     route.markerFrom   = currentDestinationMarker;
