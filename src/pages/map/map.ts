@@ -24,6 +24,7 @@ import { Utils } from '../../app/services/Utils';
 import { XpWebSocketService } from '../../app/services/Xp.web.socket.service';
 import { LiteralMapEntry } from '@angular/compiler/src/output/output_ast';
 import { Router } from '../../app/services/Router';
+import { FlightPlan } from '../../app/services/FlightPlan';
 
 const MAX_ZOOM                    = 15;
 const ZOOM_PAN_OPTIONS            = {animate: true, duration: 0.25, easeLinearity: 1.0, noMoveStart: false}; /*{animate: true, duration: 3.5, easeLinearity: 1.0, noMoveStart: false}*/
@@ -192,7 +193,8 @@ export class MapPage {
     public xpWsSocket: XpWebSocketService, 
     public utils: Utils,
     public aviation: Aviation,
-    public router: Router) {
+    public router: Router,
+    public flightPlan: FlightPlan) {
 
     staticXPlaneWsServer  = xpWsSocket;
     staticAlertController = alertCtrl;
@@ -208,13 +210,12 @@ export class MapPage {
       } else {
         wsURL = "ws://" + this.xplaneAddress + "/";
       }
-      
     });
   }
 
   ngOnInit() {
-    
   }
+
   ngAfterViewInit(){
     $(document).ready(function(){
       //console.log('JQuery is working!!');
@@ -280,21 +281,22 @@ export class MapPage {
   }
 
   onMessageCommand(json) {
+    var event;
     this.utils.trace("onMessageCommand: " + json.message);
     if ( json.message.startsWith("PAUSED") ) {
-      var event = new Event('PAUSED');
+      event = new Event('PAUSED');
       buttonPlayPause.dispatchEvent(event);
       this.showToastPauseReason(json);
       this.changeStateToPaused();
     } else
     if ( json.message == "PLAY" ) {
-      var event = new Event('PLAY');
+      event = new Event('PLAY');
       buttonPlayPause.dispatchEvent(event);
       this.changeStateToUnpaused();
       this.dismissToastPauseReason();
     } else
     if ( json.message == "STOPPED" ) {
-      var event = new Event('STOPPED');
+      event = new Event('STOPPED');
       buttonPlayPause.dispatchEvent(event);
       this.disconnect();
     }
@@ -309,10 +311,14 @@ export class MapPage {
     } 
     // Reposition the Airplane new give Lat/Lng
     this.updateAirplanePosition(json.airplane, bearing);
+    this.updateFlightPlan(json.flightPlan);
     lastLat = json.airplane.lat;
     lastLng = json.airplane.lng;
   }
   
+  updateFlightPlan(flightPlan) {
+    this.flightPlan.showFlightPlan(flightPlan);
+  }
   updateAirplanePosition(airplaneData, bearing) {
     this.utils.trace("Airplane new position (Lat/Lng): " + airplaneData.lat + ":" + airplaneData.lng);
     var newLatLng = new leaflet.LatLng(airplaneData.lat,airplaneData.lng);
@@ -326,6 +332,7 @@ export class MapPage {
 
     // Draw next destination marker (if exists)
     this.router.createUpdateNextDestinationMarker(airplaneData);
+    
 
     // Rotate the Icon according with the bearing
     // Two options to rotate the Icon in Degrees according to the Heading of the Airplane
@@ -484,6 +491,7 @@ export class MapPage {
 
     map.on('zoomend', this.zoomListener);
     this.router.setMap(map);
+    this.flightPlan.setMap(map);
   }
 
   zoomListener() {
