@@ -3,6 +3,8 @@ import { Utils } from "./Utils";
 import { Aviation } from './Aviation';
 import leaflet from 'leaflet';
 import { isRightSide } from "ionic-angular/umd/util/util";
+import { MapOperator } from "rxjs/operators/map";
+import { connectableObservableDescriptor } from "rxjs/observable/ConnectableObservable";
 
 const ICON_WIDTH         = 100;
 const ICON_HEIGHT        = 50;
@@ -82,23 +84,36 @@ export class FlightPlan {
     }
 
     showFlightPlan(flightPlan){
-        console.log(flightPlan);
+        this.utils.debug(flightPlan);
         if ( flightPlan  ) {
             // Check if the Version is still the same, otherwise printe the new FlightPlan version
-            if (flightPlan.version != this.versionPrinted ) {
+            //if (flightPlan.version != this.versionPrinted ) {
+
+                // clean previous if exists
+                this.cleanPreviousFlightPlan();
 
                 var pointList = [];
                 for (var index = 0; index < flightPlan.waypoints.length; ++index) {
                     var wpt = flightPlan.waypoints[index];
                     pointList.push(new leaflet.LatLng(wpt.latitude,wpt.longitude));
-                    this.createNextDestinationMarker(wpt);
+                    this.vectorPath.push(this.createNextDestinationMarker(wpt));
                 }
                 this.createRouteLine(pointList);
-                
                 this.versionPrinted = flightPlan.version;
-            }
+           //}
 
         }
+    }
+
+    cleanPreviousFlightPlan() {
+      if (nextDestVector) {
+        map.removeLayer(nextDestVector);
+      }
+      if ( this.vectorPath && this.vectorPath.length > 0 ) {
+        for(let m in this.vectorPath) {
+          map.removeLayer(this.vectorPath[m]);
+        }
+      }
     }
 
     createNextDestinationMarker(navaid) {
@@ -119,7 +134,6 @@ export class FlightPlan {
              icon = AIRPORT_ICON;
         } else {
           this.utils.warn(navaid.type + " Not found an ICON for it!!!");
-          console.log(navaid.type + " Not found an ICON for it!!!");
         }
         this.utils.trace("Adding next destination marker to " + navaid.latitude + ":" + navaid.longitude);
         var nextDestinationMarker    = leaflet.marker([navaid.latitude,navaid.longitude], {icon: icon}).addTo(map);

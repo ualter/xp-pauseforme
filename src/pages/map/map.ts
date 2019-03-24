@@ -244,6 +244,9 @@ export class MapPage {
             }
             else if ( message.indexOf('message') >= 0 ) {
               this.onMessageCommand(json);
+            }
+            else if ( message.indexOf('flightPlan') >= 0 ) {
+              this.onMessageFlightPlan(json);
             } else {
               this.utils.trace("Message not processed: ",message);
             }
@@ -302,6 +305,11 @@ export class MapPage {
     }
   }
 
+  onMessageFlightPlan(json) {
+    console.log(json);
+    this.updateFlightPlan(json.flightPlan);
+  }
+
   onMessageAirplane(json) {
     // Bearing the Airplane new given Lat/Lng according with the last Lat/Lng
     let bearing = undefined;
@@ -311,7 +319,6 @@ export class MapPage {
     } 
     // Reposition the Airplane new give Lat/Lng
     this.updateAirplanePosition(json.airplane, bearing);
-    this.updateFlightPlan(json.flightPlan);
     lastLat = json.airplane.lat;
     lastLng = json.airplane.lng;
   }
@@ -331,8 +338,7 @@ export class MapPage {
     airplaneMarker.setPopupContent(htmlPopup);
 
     // Draw next destination marker (if exists)
-    this.router.createUpdateNextDestinationMarker(airplaneData);
-    
+    //this.router.createUpdateNextDestinationMarker(airplaneData);
 
     // Rotate the Icon according with the bearing
     // Two options to rotate the Icon in Degrees according to the Heading of the Airplane
