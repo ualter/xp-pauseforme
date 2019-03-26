@@ -10,8 +10,8 @@ const ICON_ANCHOR_WIDTH  = ICON_WIDTH / 4;
 const ICON_ANCHOR_HEIGHT = ICON_WIDTH / 2;
 
 var NDB_ICON = leaflet.icon({
-    iconUrl:      'assets/imgs/icon_ndb.png',
-    shadowUrl:    'assets/imgs/icon_ndb_shadow.png',
+    iconUrl:      'assets/imgs/icon_ndb_v2.png',
+    shadowUrl:    'assets/imgs/icon_ndb_v2_shadow.png',
     iconSize:     [ICON_WIDTH,ICON_HEIGHT],
     shadowSize:   [ICON_WIDTH,ICON_HEIGHT],
     iconAnchor:   [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],  // point of the icon which will correspond to marker's location
@@ -19,8 +19,8 @@ var NDB_ICON = leaflet.icon({
     popupAnchor:  [0,((ICON_HEIGHT/2) + 23) * -1]  // point from which the popup should open relative to the iconAnchor
 });
 var VOR_ICON = leaflet.icon({
-  iconUrl:      'assets/imgs/icon_vor.png',
-  shadowUrl:    'assets/imgs/icon_vor_shadow.png',
+  iconUrl:      'assets/imgs/icon_vor_v2.png',
+  shadowUrl:    'assets/imgs/icon_vor_v2_shadow.png',
   iconSize:     [ICON_WIDTH,ICON_HEIGHT],
   shadowSize:   [ICON_WIDTH,ICON_HEIGHT],
   iconAnchor:   [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],
@@ -28,8 +28,8 @@ var VOR_ICON = leaflet.icon({
   popupAnchor:  [0,((ICON_HEIGHT/2) + 23) * -1]
 });
 var FIX_ICON = leaflet.icon({
-  iconUrl:      'assets/imgs/icon_fix.png',
-  shadowUrl:    'assets/imgs/icon_fix_shadow.png',
+  iconUrl:      'assets/imgs/icon_fix_v2.png',
+  shadowUrl:    'assets/imgs/icon_fix_v2_shadow.png',
   iconSize:     [ICON_WIDTH,ICON_HEIGHT],
   shadowSize:   [ICON_WIDTH,ICON_HEIGHT],
   iconAnchor:   [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],
@@ -37,8 +37,8 @@ var FIX_ICON = leaflet.icon({
   popupAnchor:  [0,((ICON_HEIGHT/2) + 23) * -1]
 });
 var LATLNG_ICON = leaflet.icon({
-  iconUrl:      'assets/imgs/icon_latlng.png',
-  shadowUrl:    'assets/imgs/icon_latlng_shadow.png',
+  iconUrl:      'assets/imgs/icon_latlng_v2.png',
+  shadowUrl:    'assets/imgs/icon_latlng_v2_shadow.png',
   iconSize:     [ICON_WIDTH,ICON_HEIGHT],
   shadowSize:   [ICON_WIDTH,ICON_HEIGHT],
   iconAnchor:   [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],
@@ -46,8 +46,8 @@ var LATLNG_ICON = leaflet.icon({
   popupAnchor:  [0,((ICON_HEIGHT/2) + 23) * -1]
 });
 var LOCATION_ICON = leaflet.icon({
-  iconUrl:      'assets/imgs/icon_location.png',
-  shadowUrl:    'assets/imgs/icon_location_shadow.png',
+  iconUrl:      'assets/imgs/icon_location_v2.png',
+  shadowUrl:    'assets/imgs/icon_location_v2_shadow.png',
   iconSize:     [ICON_WIDTH,ICON_HEIGHT],
   shadowSize:   [ICON_WIDTH,ICON_HEIGHT],
   iconAnchor:   [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],
@@ -55,8 +55,8 @@ var LOCATION_ICON = leaflet.icon({
   popupAnchor:  [0,((ICON_HEIGHT/2) + 23) * -1]
 });
 var AIRPORT_ICON = leaflet.icon({
-  iconUrl:      'assets/imgs/icon_airport.png',
-  shadowUrl:    'assets/imgs/icon_airport_shadow.png',
+  iconUrl:      'assets/imgs/icon_airport_v2.png',
+  shadowUrl:    'assets/imgs/icon_airport_v2_shadow.png',
   iconSize:     [ICON_WIDTH,ICON_HEIGHT],
   shadowSize:   [ICON_WIDTH,ICON_HEIGHT],
   iconAnchor:   [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],
