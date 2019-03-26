@@ -6,81 +6,222 @@ import { isRightSide } from "ionic-angular/umd/util/util";
 import { MapOperator } from "rxjs/operators/map";
 import { connectableObservableDescriptor } from "rxjs/observable/ConnectableObservable";
 
-// v1
-//const ICON_WIDTH         = 100;
-//const ICON_HEIGHT        = 50;
-// v2
-const ICON_WIDTH         = 75;
-const ICON_HEIGHT        = 50;
-const ICON_ANCHOR_WIDTH  = ICON_WIDTH / 4;
-const ICON_ANCHOR_HEIGHT = ICON_WIDTH / 2;
-
-var NDB_ICON = leaflet.icon({
-    iconUrl:      'assets/imgs/icon_ndb_v2.png',
-    shadowUrl:    'assets/imgs/icon_ndb_v2_shadow.png',
-    iconSize:     [ICON_WIDTH,ICON_HEIGHT],
-    shadowSize:   [ICON_WIDTH,ICON_HEIGHT],
-    iconAnchor:   [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],  // point of the icon which will correspond to marker's location
-    shadowAnchor: [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],  // the same for the shadow
-    popupAnchor:  [0,((ICON_HEIGHT/2) + 23) * -1]  // point from which the popup should open relative to the iconAnchor
-});
-var VOR_ICON = leaflet.icon({
-  iconUrl:      'assets/imgs/icon_vor_v2.png',
-  shadowUrl:    'assets/imgs/icon_vor_v2_shadow.png',
-  iconSize:     [ICON_WIDTH,ICON_HEIGHT],
-  shadowSize:   [ICON_WIDTH,ICON_HEIGHT],
-  iconAnchor:   [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],
-  shadowAnchor: [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],
-  popupAnchor:  [0,((ICON_HEIGHT/2) + 23) * -1]
-});
-var FIX_ICON = leaflet.icon({
-  iconUrl:      'assets/imgs/icon_fix_v2.png',
-  shadowUrl:    'assets/imgs/icon_fix_v2_shadow.png',
-  iconSize:     [ICON_WIDTH,ICON_HEIGHT],
-  shadowSize:   [ICON_WIDTH,ICON_HEIGHT],
-  iconAnchor:   [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],
-  shadowAnchor: [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],
-  popupAnchor:  [0,((ICON_HEIGHT/2) + 23) * -1]
-});
-var LATLNG_ICON = leaflet.icon({
-  iconUrl:      'assets/imgs/icon_latlng_v2.png',
-  shadowUrl:    'assets/imgs/icon_latlng_v2_shadow.png',
-  iconSize:     [ICON_WIDTH,ICON_HEIGHT],
-  shadowSize:   [ICON_WIDTH,ICON_HEIGHT],
-  iconAnchor:   [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],
-  shadowAnchor: [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],
-  popupAnchor:  [0,((ICON_HEIGHT/2) + 23) * -1]
-});
-var LOCATION_ICON = leaflet.icon({
-  iconUrl:      'assets/imgs/icon_location_v2.png',
-  shadowUrl:    'assets/imgs/icon_location_v2_shadow.png',
-  iconSize:     [ICON_WIDTH,ICON_HEIGHT],
-  shadowSize:   [ICON_WIDTH,ICON_HEIGHT],
-  iconAnchor:   [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],
-  shadowAnchor: [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],
-  popupAnchor:  [0,((ICON_HEIGHT/2) + 23) * -1]
-});
-var AIRPORT_ICON = leaflet.icon({
-  iconUrl:      'assets/imgs/icon_airport_v2.png',
-  shadowUrl:    'assets/imgs/icon_airport_v2_shadow.png',
-  iconSize:     [ICON_WIDTH,ICON_HEIGHT],
-  shadowSize:   [ICON_WIDTH,ICON_HEIGHT],
-  iconAnchor:   [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],
-  shadowAnchor: [ICON_ANCHOR_WIDTH,ICON_ANCHOR_HEIGHT],
-  popupAnchor:  [0,((ICON_HEIGHT/2) + 23) * -1]
-});
-
 var map;
-var nextDestVector;
+var flightPlanVector;
+var flightPlanMarkersSize1Group;
+var flightPlanMarkersSize2Group;
+var flightPlanMarkersSize3Group;
+
+class IconSize1 {
+  ICON_WIDTH         = 100;
+  ICON_HEIGHT        = 50;
+  ICON_ANCHOR_WIDTH  = this.ICON_WIDTH / 4;
+  ICON_ANCHOR_HEIGHT = this.ICON_WIDTH / 2;
+
+  NDB_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s1/icon_ndb.png',
+    shadowUrl:    'assets/imgs/s1/icon_ndb_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],  // point of the icon which will correspond to marker's location
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],  // the same for the shadow
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]  // point from which the popup should open relative to the iconAnchor
+  });
+  VOR_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s1/icon_vor.png',
+    shadowUrl:    'assets/imgs/s1/icon_vor_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
+  });
+  FIX_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s1/icon_fix.png',
+    shadowUrl:    'assets/imgs/s1/icon_fix_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
+  });
+  LATLNG_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s1/icon_latlng.png',
+    shadowUrl:    'assets/imgs/s1/icon_latlng_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
+  });
+  LOCATION_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s1/icon_location.png',
+    shadowUrl:    'assets/imgs/s1/icon_location_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
+  });
+  AIRPORT_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s1/icon_airport.png',
+    shadowUrl:    'assets/imgs/s1/icon_airport_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
+  });
+}
+
+class IconSize2 {
+  ICON_WIDTH         = 80;
+  ICON_HEIGHT        = 40;
+  ICON_ANCHOR_WIDTH  = this.ICON_WIDTH / 4;
+  ICON_ANCHOR_HEIGHT = this.ICON_WIDTH / 2;
+
+  NDB_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s2/icon_ndb_s2.png',
+    shadowUrl:    'assets/imgs/s2/icon_ndb_s2_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],  // point of the icon which will correspond to marker's location
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],  // the same for the shadow
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]  // point from which the popup should open relative to the iconAnchor
+  });
+  VOR_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s2/icon_vor_s2.png',
+    shadowUrl:    'assets/imgs/s2/icon_vor_s2_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
+  });
+  FIX_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s2/icon_fix_s2.png',
+    shadowUrl:    'assets/imgs/s2/icon_fix_s2_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
+  });
+  LATLNG_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s2/icon_latlng_s2.png',
+    shadowUrl:    'assets/imgs/s2/icon_latlng_s2_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
+  });
+  LOCATION_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s2/icon_location_s2.png',
+    shadowUrl:    'assets/imgs/s2/icon_location_s2_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
+  });
+  AIRPORT_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s2/icon_airport_s2.png',
+    shadowUrl:    'assets/imgs/s2/icon_airport_s2_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
+  });
+}
+
+class IconSize3 {
+  ICON_WIDTH         = 60;
+  ICON_HEIGHT        = 60;
+  ICON_ANCHOR_WIDTH  = this.ICON_WIDTH / 4;
+  ICON_ANCHOR_HEIGHT = this.ICON_WIDTH / 2;
+
+  NDB_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s2/icon_ndb_s2.png',
+    shadowUrl:    'assets/imgs/s2/icon_ndb_s2_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],  // point of the icon which will correspond to marker's location
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],  // the same for the shadow
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]  // point from which the popup should open relative to the iconAnchor
+  });
+  VOR_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s3/icon_vor_s3.png',
+    //shadowUrl:    'assets/imgs/s2/icon_vor_s2_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
+  });
+  FIX_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s2/icon_fix_s2.png',
+    shadowUrl:    'assets/imgs/s2/icon_fix_s2_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
+  });
+  LATLNG_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s2/icon_latlng_s2.png',
+    shadowUrl:    'assets/imgs/s2/icon_latlng_s2_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
+  });
+  LOCATION_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s2/icon_location_s2.png',
+    shadowUrl:    'assets/imgs/s2/icon_location_s2_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
+  });
+  AIRPORT_ICON = leaflet.icon({
+    iconUrl:      'assets/imgs/s2/icon_airport_s2.png',
+    shadowUrl:    'assets/imgs/s2/icon_airport_s2_shadow.png',
+    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
+    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
+    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
+    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
+  });
+}
+
+var iconSize1 = new IconSize1();
+var iconSize2 = new IconSize2();
+var iconSize3 = new IconSize2();
+
+var zoomIconSize1 = [9,18];
+var zoomIconSize2 = [6,8];
+var zoomIconSize3 = [0,5];
+
+/*
+var icon = centerMarker.options.icon;
+icon.options.iconSize = [newwidth, newheight];
+centerMarker.setIcon(icon);
+*/
 
 @Injectable()
 export class FlightPlan {
 
-    vectorPath = [];
     versionPrinted = 0;
 
     constructor(public utils: Utils,
         public aviation: Aviation) {
+          flightPlanMarkersSize1Group = new leaflet.FeatureGroup();
+          flightPlanMarkersSize2Group = new leaflet.FeatureGroup();
+          flightPlanMarkersSize3Group = new leaflet.FeatureGroup();
     }
 
     setMap(_map) {
@@ -90,57 +231,97 @@ export class FlightPlan {
     showFlightPlan(flightPlan){
         this.utils.debug(flightPlan);
         if ( flightPlan  ) {
-            // Check if the Version is still the same, otherwise printe the new FlightPlan version
-            //if (flightPlan.version != this.versionPrinted ) {
+            // clean previous if exists
+            this.cleanPreviousFlightPlan();
 
-                // clean previous if exists
-                this.cleanPreviousFlightPlan();
+            var pointList = [];
+            for (var index = 0; index < flightPlan.waypoints.length; ++index) {
+                var wpt = flightPlan.waypoints[index];
+                pointList.push(new leaflet.LatLng(wpt.latitude,wpt.longitude));
+                flightPlanMarkersSize1Group.addLayer(this.createNextDestinationMarker(wpt,iconSize1));
+                flightPlanMarkersSize2Group.addLayer(this.createNextDestinationMarker(wpt,iconSize2));
+                flightPlanMarkersSize3Group.addLayer(this.createNextDestinationMarker(wpt,iconSize3));
+            }
 
-                var pointList = [];
-                for (var index = 0; index < flightPlan.waypoints.length; ++index) {
-                    var wpt = flightPlan.waypoints[index];
-                    pointList.push(new leaflet.LatLng(wpt.latitude,wpt.longitude));
-                    this.vectorPath.push(this.createNextDestinationMarker(wpt));
-                }
-                this.createRouteLine(pointList);
-                this.versionPrinted = flightPlan.version;
-           //}
+            if ( map.getZoom() >= zoomIconSize1[0] &&  map.getZoom() <= zoomIconSize1[1] )   {
+              map.addLayer(flightPlanMarkersSize1Group);
+            } else 
+            if ( map.getZoom() >= zoomIconSize2[0] &&  map.getZoom() <= zoomIconSize2[1] )   {
+              map.addLayer(flightPlanMarkersSize2Group);
+            } else 
+            if ( map.getZoom() >= zoomIconSize3[0] &&  map.getZoom() <= zoomIconSize3[1] )   {
+              map.addLayer(flightPlanMarkersSize3Group);
+            }
 
+            this.createRouteLine(pointList);
+            this.versionPrinted = flightPlan.version;
         }
     }
 
     cleanPreviousFlightPlan() {
-      if (nextDestVector) {
-        map.removeLayer(nextDestVector);
+      if (flightPlanVector) {
+        map.removeLayer(flightPlanVector);
       }
-      if ( this.vectorPath && this.vectorPath.length > 0 ) {
-        for(let m in this.vectorPath) {
-          map.removeLayer(this.vectorPath[m]);
+      if ( flightPlanMarkersSize1Group ) {
+        map.removeLayer(flightPlanMarkersSize1Group);
+      }
+      if ( flightPlanMarkersSize2Group ) {
+        map.removeLayer(flightPlanMarkersSize2Group);
+      }
+    }
+
+    /*flightPlanMarkersSize1Group.eachLayer(function(layer){
+            var icon = layer.options.icon;
+            icon.options.iconSize   = [100, 50];
+            icon.options.shadowSize = [100, 50];
+            layer.setIcon(icon);
+          });*/
+    adaptFlightPlanToZoom(zoom) {
+      if ( flightPlanVector ) {
+        console.log( map.getZoom() );
+        if ( map.getZoom() >= zoomIconSize1[0] &&  map.getZoom() <= zoomIconSize1[1] )   {
+          console.log("Size1");
+          map.removeLayer(flightPlanMarkersSize2Group);
+          map.removeLayer(flightPlanMarkersSize3Group);
+          map.addLayer(flightPlanMarkersSize1Group);
+        } else 
+        if ( map.getZoom() >= zoomIconSize2[0] &&  map.getZoom() <= zoomIconSize2[1] )   {
+          console.log("Size2");
+          map.removeLayer(flightPlanMarkersSize1Group);
+          map.removeLayer(flightPlanMarkersSize3Group);
+          map.addLayer(flightPlanMarkersSize2Group);
+        } else 
+        if ( map.getZoom() >= zoomIconSize3[0] &&  map.getZoom() <= zoomIconSize3[1] )   {
+          console.log("Size3");
+          map.removeLayer(flightPlanMarkersSize1Group);
+          map.removeLayer(flightPlanMarkersSize2Group);
+          map.addLayer(flightPlanMarkersSize3Group);
         }
       }
     }
 
-    createNextDestinationMarker(navaid) {
-        let icon = LOCATION_ICON;
+    createNextDestinationMarker(navaid, iconSize) {
+        let icon = iconSize.LOCATION_ICON;
         if ( "NDB" == navaid.type ) {
-             icon = NDB_ICON;
+             icon = iconSize.NDB_ICON;
         } else
         if ( "VOR" == navaid.type ) {
-             icon = VOR_ICON;
+             icon = iconSize.VOR_ICON;
         } else
         if ( "FIX" == navaid.type ) {
-             icon = FIX_ICON;
+             icon = iconSize.FIX_ICON;
         } else
         if ( "Lat/Lng" == navaid.type ) {
-             icon = LATLNG_ICON;
+             icon = iconSize.LATLNG_ICON;
         } else
         if ( "Airport" == navaid.type ) {
-             icon = AIRPORT_ICON;
+             icon = iconSize.AIRPORT_ICON;
         } else {
           this.utils.warn(navaid.type + " Not found an ICON for it!!!");
         }
         this.utils.trace("Adding next destination marker to " + navaid.latitude + ":" + navaid.longitude);
-        var nextDestinationMarker    = leaflet.marker([navaid.latitude,navaid.longitude], {icon: icon}).addTo(map);
+        //var nextDestinationMarker    = leaflet.marker([navaid.latitude,navaid.longitude], {icon: icon}).addTo(map);
+        var nextDestinationMarker    = leaflet.marker([navaid.latitude,navaid.longitude], {icon: icon});
         let htmlPopup                = this.destinationHtmlPopup(navaid);
         var nextDestinationPopUp     = nextDestinationMarker.bindPopup(htmlPopup);
         nextDestinationPopUp.setLatLng([navaid.latitude,navaid.longitude]);
@@ -148,14 +329,13 @@ export class FlightPlan {
     }
 
     createRouteLine(pointList) {
-        nextDestVector = new leaflet.Polyline(pointList, {
+        flightPlanVector = new leaflet.Polyline(pointList, {
             color: 'blue',
             weight: 2,
             opacity: 0.5,
-            smoothFactor: 5
+            smoothFactor: 9
         });
-        nextDestVector.addTo(map);
-
+        flightPlanVector.addTo(map);
     }
 
     destinationHtmlPopup(navaid, markerFrom?, airplaneLocation?) {

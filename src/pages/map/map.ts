@@ -306,7 +306,6 @@ export class MapPage {
   }
 
   onMessageFlightPlan(json) {
-    console.log(json);
     this.updateFlightPlan(json.flightPlan);
   }
 
@@ -570,6 +569,11 @@ export class MapPage {
 
     this.adaptAirplaneIconSizeToZoom(size);
     this.adaptNextDestinationIconSizeToZoom(size);
+    this.adaptFlightPlanToZoom(zoom); 
+  }
+
+  adaptFlightPlanToZoom(zoom) {
+    this.flightPlan.adaptFlightPlanToZoom(zoom);
   }
 
   adaptAirplaneIconSizeToZoom(size) {
