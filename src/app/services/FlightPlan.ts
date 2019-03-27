@@ -11,6 +11,8 @@ var flightPlanVector;
 var flightPlanMarkersSize1Group;
 var flightPlanMarkersSize2Group;
 var flightPlanMarkersSize3Group;
+var flightPlanMarkersSize4Group;
+var flightPlanMarkersSize5Group;
 
 class IconSize1 {
   ICON_WIDTH         = 100;
@@ -136,75 +138,14 @@ class IconSize2 {
   });
 }
 
-class IconSize3 {
-  ICON_WIDTH         = 60;
-  ICON_HEIGHT        = 60;
-  ICON_ANCHOR_WIDTH  = this.ICON_WIDTH / 4;
-  ICON_ANCHOR_HEIGHT = this.ICON_WIDTH / 2;
-
-  NDB_ICON = leaflet.icon({
-    iconUrl:      'assets/imgs/s2/icon_ndb_s2.png',
-    shadowUrl:    'assets/imgs/s2/icon_ndb_s2_shadow.png',
-    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
-    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
-    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],  // point of the icon which will correspond to marker's location
-    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],  // the same for the shadow
-    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]  // point from which the popup should open relative to the iconAnchor
-  });
-  VOR_ICON = leaflet.icon({
-    iconUrl:      'assets/imgs/s3/icon_vor_s3.png',
-    //shadowUrl:    'assets/imgs/s2/icon_vor_s2_shadow.png',
-    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
-    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
-    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
-    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
-    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
-  });
-  FIX_ICON = leaflet.icon({
-    iconUrl:      'assets/imgs/s2/icon_fix_s2.png',
-    shadowUrl:    'assets/imgs/s2/icon_fix_s2_shadow.png',
-    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
-    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
-    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
-    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
-    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
-  });
-  LATLNG_ICON = leaflet.icon({
-    iconUrl:      'assets/imgs/s2/icon_latlng_s2.png',
-    shadowUrl:    'assets/imgs/s2/icon_latlng_s2_shadow.png',
-    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
-    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
-    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
-    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
-    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
-  });
-  LOCATION_ICON = leaflet.icon({
-    iconUrl:      'assets/imgs/s2/icon_location_s2.png',
-    shadowUrl:    'assets/imgs/s2/icon_location_s2_shadow.png',
-    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
-    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
-    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
-    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
-    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
-  });
-  AIRPORT_ICON = leaflet.icon({
-    iconUrl:      'assets/imgs/s2/icon_airport_s2.png',
-    shadowUrl:    'assets/imgs/s2/icon_airport_s2_shadow.png',
-    iconSize:     [this.ICON_WIDTH,this.ICON_HEIGHT],
-    shadowSize:   [this.ICON_WIDTH,this.ICON_HEIGHT],
-    iconAnchor:   [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
-    shadowAnchor: [this.ICON_ANCHOR_WIDTH,this.ICON_ANCHOR_HEIGHT],
-    popupAnchor:  [0,((this.ICON_HEIGHT/2) + 23) * -1]
-  });
-}
-
 var iconSize1 = new IconSize1();
 var iconSize2 = new IconSize2();
-var iconSize3 = new IconSize2();
 
-var zoomIconSize1 = [9,18];
-var zoomIconSize2 = [6,8];
-var zoomIconSize3 = [0,5];
+var zoomIconSize1 = [10,18];
+var zoomIconSize2 = [8,9];
+var zoomIconSize3 = [6,7];
+var zoomIconSize4 = [5,5];
+var zoomIconSize5 = [0,4];
 
 /*
 var icon = centerMarker.options.icon;
@@ -222,6 +163,8 @@ export class FlightPlan {
           flightPlanMarkersSize1Group = new leaflet.FeatureGroup();
           flightPlanMarkersSize2Group = new leaflet.FeatureGroup();
           flightPlanMarkersSize3Group = new leaflet.FeatureGroup();
+          flightPlanMarkersSize4Group = new leaflet.FeatureGroup();
+          flightPlanMarkersSize5Group = new leaflet.FeatureGroup();
     }
 
     setMap(_map) {
@@ -240,7 +183,10 @@ export class FlightPlan {
                 pointList.push(new leaflet.LatLng(wpt.latitude,wpt.longitude));
                 flightPlanMarkersSize1Group.addLayer(this.createNextDestinationMarker(wpt,iconSize1));
                 flightPlanMarkersSize2Group.addLayer(this.createNextDestinationMarker(wpt,iconSize2));
-                flightPlanMarkersSize3Group.addLayer(this.createNextDestinationMarker(wpt,iconSize3));
+                flightPlanMarkersSize3Group.addLayer(this.createNextDestinationCircle(wpt,3));
+                
+                flightPlanMarkersSize4Group.addLayer(this.createNextDestinationCircle(wpt,4));
+                flightPlanMarkersSize5Group.addLayer(this.createNextDestinationCircle(wpt,5));
             }
 
             if ( map.getZoom() >= zoomIconSize1[0] &&  map.getZoom() <= zoomIconSize1[1] )   {
@@ -251,6 +197,12 @@ export class FlightPlan {
             } else 
             if ( map.getZoom() >= zoomIconSize3[0] &&  map.getZoom() <= zoomIconSize3[1] )   {
               map.addLayer(flightPlanMarkersSize3Group);
+            } else 
+            if ( map.getZoom() >= zoomIconSize4[0] &&  map.getZoom() <= zoomIconSize4[1] )   {
+              map.addLayer(flightPlanMarkersSize4Group);
+            } else 
+            if ( map.getZoom() >= zoomIconSize5[0] &&  map.getZoom() <= zoomIconSize5[1] )   {
+              map.addLayer(flightPlanMarkersSize5Group);
             }
 
             this.createRouteLine(pointList);
@@ -268,6 +220,12 @@ export class FlightPlan {
       if ( flightPlanMarkersSize2Group ) {
         map.removeLayer(flightPlanMarkersSize2Group);
       }
+      if ( flightPlanMarkersSize3Group ) {
+        map.removeLayer(flightPlanMarkersSize3Group);
+      }
+      if ( flightPlanMarkersSize4Group ) {
+        map.removeLayer(flightPlanMarkersSize4Group);
+      }
     }
 
     /*flightPlanMarkersSize1Group.eachLayer(function(layer){
@@ -283,19 +241,41 @@ export class FlightPlan {
           console.log("Size1");
           map.removeLayer(flightPlanMarkersSize2Group);
           map.removeLayer(flightPlanMarkersSize3Group);
+          map.removeLayer(flightPlanMarkersSize4Group);
+          map.removeLayer(flightPlanMarkersSize5Group);
           map.addLayer(flightPlanMarkersSize1Group);
         } else 
         if ( map.getZoom() >= zoomIconSize2[0] &&  map.getZoom() <= zoomIconSize2[1] )   {
           console.log("Size2");
           map.removeLayer(flightPlanMarkersSize1Group);
           map.removeLayer(flightPlanMarkersSize3Group);
+          map.removeLayer(flightPlanMarkersSize4Group);
+          map.removeLayer(flightPlanMarkersSize5Group);
           map.addLayer(flightPlanMarkersSize2Group);
         } else 
         if ( map.getZoom() >= zoomIconSize3[0] &&  map.getZoom() <= zoomIconSize3[1] )   {
           console.log("Size3");
           map.removeLayer(flightPlanMarkersSize1Group);
           map.removeLayer(flightPlanMarkersSize2Group);
+          map.removeLayer(flightPlanMarkersSize4Group);
+          map.removeLayer(flightPlanMarkersSize5Group);
           map.addLayer(flightPlanMarkersSize3Group);
+        } else 
+        if ( map.getZoom() >= zoomIconSize4[0] &&  map.getZoom() <= zoomIconSize4[1] )   {
+          console.log("Size4");
+          map.removeLayer(flightPlanMarkersSize1Group);
+          map.removeLayer(flightPlanMarkersSize2Group);
+          map.removeLayer(flightPlanMarkersSize3Group);
+          map.removeLayer(flightPlanMarkersSize5Group);
+          map.addLayer(flightPlanMarkersSize4Group);
+        } else 
+        if ( map.getZoom() >= zoomIconSize5[0] &&  map.getZoom() <= zoomIconSize5[1] )   {
+          console.log("Size5");
+          map.removeLayer(flightPlanMarkersSize1Group);
+          map.removeLayer(flightPlanMarkersSize2Group);
+          map.removeLayer(flightPlanMarkersSize3Group);
+          map.removeLayer(flightPlanMarkersSize4Group);
+          map.addLayer(flightPlanMarkersSize5Group);
         }
       }
     }
@@ -326,6 +306,53 @@ export class FlightPlan {
         var nextDestinationPopUp     = nextDestinationMarker.bindPopup(htmlPopup);
         nextDestinationPopUp.setLatLng([navaid.latitude,navaid.longitude]);
         return nextDestinationMarker;
+    }
+
+    createNextDestinationCircle(navaid, iconSize) {
+      if ( iconSize != 5 ) {
+        let radius;
+        if ( iconSize == 3 ) {
+          radius = 5;
+        } else
+        if ( iconSize == 4 ) {
+          radius = 2;
+        } 
+        let icon = iconSize.LOCATION_ICON;
+        if ( "NDB" == navaid.type ) {
+            icon = iconSize.NDB_ICON;
+        } else
+        if ( "VOR" == navaid.type ) {
+            icon = iconSize.VOR_ICON;
+        } else
+        if ( "FIX" == navaid.type ) {
+            icon = iconSize.FIX_ICON;
+        } else
+        if ( "Lat/Lng" == navaid.type ) {
+            icon = iconSize.LATLNG_ICON;
+        } else
+        if ( "Airport" == navaid.type ) {
+            icon = iconSize.AIRPORT_ICON;
+        } else {
+          this.utils.warn(navaid.type + " Not found an ICON for it!!!");
+        }
+        this.utils.trace("Adding next destination marker to " + navaid.latitude + ":" + navaid.longitude);
+        var circle = new leaflet.circleMarker([navaid.latitude,navaid.longitude],
+        {
+          radius: radius,
+          stroke: true,
+          color: 'black',
+          fillColor: 'white',
+          fillOpacity: 0.5,
+          weight: 1,
+          lineCap: 'round'
+        });
+        let htmlPopup                = this.destinationHtmlPopup(navaid);
+        var nextDestinationPopUp     = circle.bindPopup(htmlPopup);
+        nextDestinationPopUp.setLatLng([navaid.latitude,navaid.longitude]);
+        return circle;
+      } else {
+        return null;
+      }      
     }
 
     createRouteLine(pointList) {
