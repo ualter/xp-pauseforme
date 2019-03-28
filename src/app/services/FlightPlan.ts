@@ -7,12 +7,13 @@ import { MapOperator } from "rxjs/operators/map";
 import { connectableObservableDescriptor } from "rxjs/observable/ConnectableObservable";
 
 var map;
-var flightPlanVector;
+var flightPlanPaths = [];
+var flightPlanMarkersAirportGroup1;
+var flightPlanMarkersAirportGroup2;
 var flightPlanMarkersSize1Group;
 var flightPlanMarkersSize2Group;
 var flightPlanMarkersSize3Group;
 var flightPlanMarkersSize4Group;
-var flightPlanMarkersSize5Group;
 
 class IconSize1 {
   ICON_WIDTH         = 100;
@@ -145,7 +146,6 @@ var zoomIconSize1 = [10,18];
 var zoomIconSize2 = [8,9];
 var zoomIconSize3 = [6,7];
 var zoomIconSize4 = [5,5];
-var zoomIconSize5 = [0,4];
 
 /*
 var icon = centerMarker.options.icon;
@@ -160,12 +160,13 @@ export class FlightPlan {
 
     constructor(public utils: Utils,
         public aviation: Aviation) {
-          flightPlanMarkersSize1Group = new leaflet.FeatureGroup();
-          flightPlanMarkersSize2Group = new leaflet.FeatureGroup();
-          flightPlanMarkersSize3Group = new leaflet.FeatureGroup();
-          flightPlanMarkersSize4Group = new leaflet.FeatureGroup();
-          flightPlanMarkersSize5Group = new leaflet.FeatureGroup();
-    }
+          flightPlanMarkersAirportGroup1 = new leaflet.FeatureGroup();
+          flightPlanMarkersAirportGroup2 = new leaflet.FeatureGroup();
+          flightPlanMarkersSize1Group    = new leaflet.FeatureGroup();
+          flightPlanMarkersSize2Group    = new leaflet.FeatureGroup();
+          flightPlanMarkersSize3Group    = new leaflet.FeatureGroup();
+          flightPlanMarkersSize4Group    = new leaflet.FeatureGroup();
+    }        
 
     setMap(_map) {
         map = _map;
@@ -177,16 +178,66 @@ export class FlightPlan {
             // clean previous if exists
             this.cleanPreviousFlightPlan();
 
-            var pointList = [];
+            let previousLatLng = [];
+            let departLatLng   = [];
+            let pointList      = [];
+            let marker;
+
             for (var index = 0; index < flightPlan.waypoints.length; ++index) {
                 var wpt = flightPlan.waypoints[index];
                 pointList.push(new leaflet.LatLng(wpt.latitude,wpt.longitude));
-                flightPlanMarkersSize1Group.addLayer(this.createNextDestinationMarker(wpt,iconSize1));
-                flightPlanMarkersSize2Group.addLayer(this.createNextDestinationMarker(wpt,iconSize2));
-                flightPlanMarkersSize3Group.addLayer(this.createNextDestinationCircle(wpt,3));
-                
-                flightPlanMarkersSize4Group.addLayer(this.createNextDestinationCircle(wpt,4));
-                flightPlanMarkersSize5Group.addLayer(this.createNextDestinationCircle(wpt,5));
+
+                let distanceFromPreviousWpt = 0;
+                let distanceFromDepartWpt   = 0;
+
+                // Depart Airport
+                if ( index == 0 ) {
+                  departLatLng = [wpt.latitude, wpt.longitude, wpt.id];
+                  this.addAirportToGroups(wpt);
+                } else
+                // Arrival Airport
+                if ( index == (flightPlan.waypoints.length - 1) ) {
+                  this.addAirportToGroups(wpt);
+                } else {
+                  if ( previousLatLng.length > 0 ) {
+                    // Calculating distances From Depart Airport and from Last Waypoint
+                    //distanceFromPreviousWpt = Math.floor(this.aviation.distance(wpt.longitude, wpt.latitude, previousLatLng[1], previousLatLng[0]));
+                    //distanceFromDepartWpt   = Math.floor(this.aviation.distance(wpt.longitude, wpt.latitude, departLatLng[1], departLatLng[0]));
+
+                    //var msg = previousLatLng[2] + " to " + wpt.id + " " + distanceFromPreviousWpt + " From Departing " + distanceFromDepartWpt;
+                    //console.log(msg);
+                  }
+
+                  // Marker Navadis
+                  marker = this.createNextDestinationMarker(wpt,iconSize1);
+                  flightPlanMarkersSize1Group.addLayer(marker);
+
+                  marker = this.createNextDestinationMarker(wpt,iconSize2);
+                  flightPlanMarkersSize2Group.addLayer(marker);
+
+                  marker = this.createNextDestinationCircle(wpt,3);
+                  flightPlanMarkersSize3Group.addLayer(marker);
+
+                  marker = this.createNextDestinationCircle(wpt,4);
+                  flightPlanMarkersSize4Group.addLayer(marker);
+
+                  if (  distanceFromPreviousWpt <= 100 ) {
+                  } 
+                }
+
+                // Vector FlightPlan
+                if ( previousLatLng.length > 0  ) {
+                  var path  = new leaflet.polyline([[previousLatLng[0], previousLatLng[1]],[wpt.latitude, wpt.longitude]], {
+                    color: 'black',
+                    weight: 3,
+                    opacity: 0.9,
+                    smoothFactor: 9
+                  });
+                  path.addTo(map);
+                  flightPlanPaths.push(path);
+                }
+
+                previousLatLng = [wpt.latitude, wpt.longitude, wpt.id];
             }
 
             if ( map.getZoom() >= zoomIconSize1[0] &&  map.getZoom() <= zoomIconSize1[1] )   {
@@ -200,20 +251,26 @@ export class FlightPlan {
             } else 
             if ( map.getZoom() >= zoomIconSize4[0] &&  map.getZoom() <= zoomIconSize4[1] )   {
               map.addLayer(flightPlanMarkersSize4Group);
-            } else 
-            if ( map.getZoom() >= zoomIconSize5[0] &&  map.getZoom() <= zoomIconSize5[1] )   {
-              map.addLayer(flightPlanMarkersSize5Group);
             }
-
-            this.createRouteLine(pointList);
             this.versionPrinted = flightPlan.version;
         }
     }
 
+  private addAirportToGroups(wpt: any) {
+    flightPlanMarkersAirportGroup1.addLayer(this.createAirportMarker(wpt, iconSize1));
+    flightPlanMarkersAirportGroup2.addLayer(this.createAirportMarker(wpt, iconSize2));
+  }
+
     cleanPreviousFlightPlan() {
-      if (flightPlanVector) {
-        map.removeLayer(flightPlanVector);
+      if (flightPlanPaths) {
+         for (var path of flightPlanPaths) {
+           map.removeLayer(path);
+         }
       }
+      flightPlanMarkersSize1Group.clearLayers();
+      flightPlanMarkersSize2Group.clearLayers();
+      flightPlanMarkersSize3Group.clearLayers();
+      flightPlanMarkersSize4Group.clearLayers();
       if ( flightPlanMarkersSize1Group ) {
         map.removeLayer(flightPlanMarkersSize1Group);
       }
@@ -226,6 +283,12 @@ export class FlightPlan {
       if ( flightPlanMarkersSize4Group ) {
         map.removeLayer(flightPlanMarkersSize4Group);
       }
+      if ( flightPlanMarkersAirportGroup1 ) {
+        map.removeLayer(flightPlanMarkersAirportGroup1);
+      }
+      if ( flightPlanMarkersAirportGroup2 ) {
+        map.removeLayer(flightPlanMarkersAirportGroup2);
+      }
     }
 
     /*flightPlanMarkersSize1Group.eachLayer(function(layer){
@@ -235,47 +298,50 @@ export class FlightPlan {
             layer.setIcon(icon);
           });*/
     adaptFlightPlanToZoom(zoom) {
-      if ( flightPlanVector ) {
+      if ( flightPlanPaths && flightPlanPaths.length > 0 ) {
         console.log( map.getZoom() );
         if ( map.getZoom() >= zoomIconSize1[0] &&  map.getZoom() <= zoomIconSize1[1] )   {
           console.log("Size1");
           map.removeLayer(flightPlanMarkersSize2Group);
           map.removeLayer(flightPlanMarkersSize3Group);
           map.removeLayer(flightPlanMarkersSize4Group);
-          map.removeLayer(flightPlanMarkersSize5Group);
           map.addLayer(flightPlanMarkersSize1Group);
+          map.addLayer(flightPlanMarkersAirportGroup1);
+          map.removeLayer(flightPlanMarkersAirportGroup1);
         } else 
         if ( map.getZoom() >= zoomIconSize2[0] &&  map.getZoom() <= zoomIconSize2[1] )   {
           console.log("Size2");
           map.removeLayer(flightPlanMarkersSize1Group);
           map.removeLayer(flightPlanMarkersSize3Group);
           map.removeLayer(flightPlanMarkersSize4Group);
-          map.removeLayer(flightPlanMarkersSize5Group);
           map.addLayer(flightPlanMarkersSize2Group);
+          map.addLayer(flightPlanMarkersAirportGroup1);
+          map.removeLayer(flightPlanMarkersAirportGroup1);
         } else 
         if ( map.getZoom() >= zoomIconSize3[0] &&  map.getZoom() <= zoomIconSize3[1] )   {
           console.log("Size3");
           map.removeLayer(flightPlanMarkersSize1Group);
           map.removeLayer(flightPlanMarkersSize2Group);
           map.removeLayer(flightPlanMarkersSize4Group);
-          map.removeLayer(flightPlanMarkersSize5Group);
           map.addLayer(flightPlanMarkersSize3Group);
+          map.addLayer(flightPlanMarkersAirportGroup2);
+          map.removeLayer(flightPlanMarkersAirportGroup2);
         } else 
         if ( map.getZoom() >= zoomIconSize4[0] &&  map.getZoom() <= zoomIconSize4[1] )   {
           console.log("Size4");
           map.removeLayer(flightPlanMarkersSize1Group);
           map.removeLayer(flightPlanMarkersSize2Group);
           map.removeLayer(flightPlanMarkersSize3Group);
-          map.removeLayer(flightPlanMarkersSize5Group);
           map.addLayer(flightPlanMarkersSize4Group);
-        } else 
-        if ( map.getZoom() >= zoomIconSize5[0] &&  map.getZoom() <= zoomIconSize5[1] )   {
-          console.log("Size5");
+          map.addLayer(flightPlanMarkersAirportGroup2);
+          map.removeLayer(flightPlanMarkersAirportGroup2);
+        } else {
           map.removeLayer(flightPlanMarkersSize1Group);
           map.removeLayer(flightPlanMarkersSize2Group);
           map.removeLayer(flightPlanMarkersSize3Group);
           map.removeLayer(flightPlanMarkersSize4Group);
-          map.addLayer(flightPlanMarkersSize5Group);
+          map.addLayer(flightPlanMarkersAirportGroup2);
+          map.removeLayer(flightPlanMarkersAirportGroup2);
         }
       }
     }
@@ -300,7 +366,6 @@ export class FlightPlan {
           this.utils.warn(navaid.type + " Not found an ICON for it!!!");
         }
         this.utils.trace("Adding next destination marker to " + navaid.latitude + ":" + navaid.longitude);
-        //var nextDestinationMarker    = leaflet.marker([navaid.latitude,navaid.longitude], {icon: icon}).addTo(map);
         var nextDestinationMarker    = leaflet.marker([navaid.latitude,navaid.longitude], {icon: icon});
         let htmlPopup                = this.destinationHtmlPopup(navaid);
         var nextDestinationPopUp     = nextDestinationMarker.bindPopup(htmlPopup);
@@ -309,10 +374,9 @@ export class FlightPlan {
     }
 
     createNextDestinationCircle(navaid, iconSize) {
-      if ( iconSize != 5 ) {
         let radius;
         if ( iconSize == 3 ) {
-          radius = 5;
+          radius = 6;
         } else
         if ( iconSize == 4 ) {
           radius = 2;
@@ -350,20 +414,18 @@ export class FlightPlan {
         var nextDestinationPopUp     = circle.bindPopup(htmlPopup);
         nextDestinationPopUp.setLatLng([navaid.latitude,navaid.longitude]);
         return circle;
-      } else {
-        return null;
-      }      
-    }
+     }
 
-    createRouteLine(pointList) {
-        flightPlanVector = new leaflet.Polyline(pointList, {
-            color: 'blue',
-            weight: 2,
-            opacity: 0.5,
-            smoothFactor: 9
-        });
-        flightPlanVector.addTo(map);
-    }
+    createAirportMarker(navaid, iconSize) {
+      let icon     = iconSize.AIRPORT_ICON;
+      this.utils.trace("Adding next destination marker to " + navaid.latitude + ":" + navaid.longitude);
+      //var nextDestinationMarker    = leaflet.marker([navaid.latitude,navaid.longitude], {icon: icon}).addTo(map);
+      var nextDestinationMarker    = leaflet.marker([navaid.latitude,navaid.longitude], {icon: icon});
+      let htmlPopup                = this.destinationHtmlPopup(navaid);
+      var nextDestinationPopUp     = nextDestinationMarker.bindPopup(htmlPopup);
+      nextDestinationPopUp.setLatLng([navaid.latitude,navaid.longitude]);
+      return nextDestinationMarker;
+  }
 
     destinationHtmlPopup(navaid, markerFrom?, airplaneLocation?) {
         let paddingValue  = 3;
