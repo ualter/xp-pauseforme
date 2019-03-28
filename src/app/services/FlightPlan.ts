@@ -14,6 +14,7 @@ var flightPlanMarkersSize1Group;
 var flightPlanMarkersSize2Group;
 var flightPlanMarkersSize3Group;
 var flightPlanMarkersSize4Group;
+var flightPlanMarkersSize5Group;
 
 class IconSize1 {
   ICON_WIDTH         = 100;
@@ -144,8 +145,9 @@ var iconSize2 = new IconSize2();
 
 var zoomIconSize1 = [10,18];
 var zoomIconSize2 = [8,9];
-var zoomIconSize3 = [6,7];
-var zoomIconSize4 = [5,5];
+var zoomIconSize3 = [7,7];
+var zoomIconSize4 = [6,6];
+var zoomIconSize5 = [5,5];
 
 /*
 var icon = centerMarker.options.icon;
@@ -166,6 +168,7 @@ export class FlightPlan {
           flightPlanMarkersSize2Group    = new leaflet.FeatureGroup();
           flightPlanMarkersSize3Group    = new leaflet.FeatureGroup();
           flightPlanMarkersSize4Group    = new leaflet.FeatureGroup();
+          flightPlanMarkersSize5Group    = new leaflet.FeatureGroup();
     }        
 
     setMap(_map) {
@@ -201,26 +204,29 @@ export class FlightPlan {
                 } else {
                   if ( previousLatLng.length > 0 ) {
                     // Calculating distances From Depart Airport and from Last Waypoint
-                    //distanceFromPreviousWpt = Math.floor(this.aviation.distance(wpt.longitude, wpt.latitude, previousLatLng[1], previousLatLng[0]));
-                    //distanceFromDepartWpt   = Math.floor(this.aviation.distance(wpt.longitude, wpt.latitude, departLatLng[1], departLatLng[0]));
+                    distanceFromPreviousWpt = Math.floor(this.aviation.distance(wpt.longitude, wpt.latitude, previousLatLng[1], previousLatLng[0]));
+                    distanceFromDepartWpt   = Math.floor(this.aviation.distance(wpt.longitude, wpt.latitude, departLatLng[1], departLatLng[0]));
 
-                    //var msg = previousLatLng[2] + " to " + wpt.id + " " + distanceFromPreviousWpt + " From Departing " + distanceFromDepartWpt;
-                    //console.log(msg);
+                    var msg = previousLatLng[2] + " to " + wpt.id + " " + distanceFromPreviousWpt + " From Departing " + distanceFromDepartWpt;
+                    console.log(msg);
                   }
 
-                  // Marker Navadis
+                  // Marker Navaids
                   marker = this.createNextDestinationMarker(wpt,iconSize1);
                   flightPlanMarkersSize1Group.addLayer(marker);
 
                   marker = this.createNextDestinationMarker(wpt,iconSize2);
                   flightPlanMarkersSize2Group.addLayer(marker);
 
-                  marker = this.createNextDestinationCircle(wpt,3);
+                  marker = this.createNextDestinationCircle(wpt,7);
                   flightPlanMarkersSize3Group.addLayer(marker);
 
-                  marker = this.createNextDestinationCircle(wpt,4);
+                  marker = this.createNextDestinationCircle(wpt,6);
                   flightPlanMarkersSize4Group.addLayer(marker);
 
+                  marker = this.createNextDestinationCircle(wpt,5);
+                  flightPlanMarkersSize5Group.addLayer(marker);
+                  
                   if (  distanceFromPreviousWpt <= 100 ) {
                   } 
                 }
@@ -228,9 +234,9 @@ export class FlightPlan {
                 // Vector FlightPlan
                 if ( previousLatLng.length > 0  ) {
                   var path  = new leaflet.polyline([[previousLatLng[0], previousLatLng[1]],[wpt.latitude, wpt.longitude]], {
-                    color: 'black',
-                    weight: 3,
-                    opacity: 0.9,
+                    color: 'blue',
+                    weight: 4,
+                    opacity: 0.85,
                     smoothFactor: 9
                   });
                   path.addTo(map);
@@ -241,25 +247,34 @@ export class FlightPlan {
             }
 
             if ( map.getZoom() >= zoomIconSize1[0] &&  map.getZoom() <= zoomIconSize1[1] )   {
+              map.addLayer(flightPlanMarkersAirportGroup1);
               map.addLayer(flightPlanMarkersSize1Group);
             } else 
             if ( map.getZoom() >= zoomIconSize2[0] &&  map.getZoom() <= zoomIconSize2[1] )   {
+              map.addLayer(flightPlanMarkersAirportGroup1);
               map.addLayer(flightPlanMarkersSize2Group);
             } else 
             if ( map.getZoom() >= zoomIconSize3[0] &&  map.getZoom() <= zoomIconSize3[1] )   {
+              map.addLayer(flightPlanMarkersAirportGroup2);
               map.addLayer(flightPlanMarkersSize3Group);
             } else 
             if ( map.getZoom() >= zoomIconSize4[0] &&  map.getZoom() <= zoomIconSize4[1] )   {
+              map.addLayer(flightPlanMarkersAirportGroup2);
+              map.addLayer(flightPlanMarkersSize4Group);
+            } else 
+            if ( map.getZoom() >= zoomIconSize5[0] &&  map.getZoom() <= zoomIconSize5[1] )   {
+              map.addLayer(flightPlanMarkersAirportGroup2);
               map.addLayer(flightPlanMarkersSize4Group);
             }
+
             this.versionPrinted = flightPlan.version;
         }
     }
 
-  private addAirportToGroups(wpt: any) {
-    flightPlanMarkersAirportGroup1.addLayer(this.createAirportMarker(wpt, iconSize1));
-    flightPlanMarkersAirportGroup2.addLayer(this.createAirportMarker(wpt, iconSize2));
-  }
+    private addAirportToGroups(wpt: any) {
+      flightPlanMarkersAirportGroup1.addLayer(this.createAirportMarker(wpt, iconSize1));
+      flightPlanMarkersAirportGroup2.addLayer(this.createAirportMarker(wpt, iconSize2));
+    }
 
     cleanPreviousFlightPlan() {
       if (flightPlanPaths) {
@@ -271,6 +286,11 @@ export class FlightPlan {
       flightPlanMarkersSize2Group.clearLayers();
       flightPlanMarkersSize3Group.clearLayers();
       flightPlanMarkersSize4Group.clearLayers();
+      flightPlanMarkersSize5Group.clearLayers();
+
+      flightPlanMarkersAirportGroup1.clearLayers();
+      flightPlanMarkersAirportGroup2.clearLayers();
+
       if ( flightPlanMarkersSize1Group ) {
         map.removeLayer(flightPlanMarkersSize1Group);
       }
@@ -283,6 +303,10 @@ export class FlightPlan {
       if ( flightPlanMarkersSize4Group ) {
         map.removeLayer(flightPlanMarkersSize4Group);
       }
+      if ( flightPlanMarkersSize5Group ) {
+        map.removeLayer(flightPlanMarkersSize5Group);
+      }
+
       if ( flightPlanMarkersAirportGroup1 ) {
         map.removeLayer(flightPlanMarkersAirportGroup1);
       }
@@ -291,58 +315,69 @@ export class FlightPlan {
       }
     }
 
-    /*flightPlanMarkersSize1Group.eachLayer(function(layer){
-            var icon = layer.options.icon;
-            icon.options.iconSize   = [100, 50];
-            icon.options.shadowSize = [100, 50];
-            layer.setIcon(icon);
-          });*/
     adaptFlightPlanToZoom(zoom) {
       if ( flightPlanPaths && flightPlanPaths.length > 0 ) {
-        console.log( map.getZoom() );
+        var size = "none";
         if ( map.getZoom() >= zoomIconSize1[0] &&  map.getZoom() <= zoomIconSize1[1] )   {
-          console.log("Size1");
+          size = "Size1";
           map.removeLayer(flightPlanMarkersSize2Group);
           map.removeLayer(flightPlanMarkersSize3Group);
           map.removeLayer(flightPlanMarkersSize4Group);
+          map.removeLayer(flightPlanMarkersSize5Group);
           map.addLayer(flightPlanMarkersSize1Group);
           map.addLayer(flightPlanMarkersAirportGroup1);
-          map.removeLayer(flightPlanMarkersAirportGroup1);
+          map.removeLayer(flightPlanMarkersAirportGroup2);
         } else 
         if ( map.getZoom() >= zoomIconSize2[0] &&  map.getZoom() <= zoomIconSize2[1] )   {
-          console.log("Size2");
+          size = "Size2";
           map.removeLayer(flightPlanMarkersSize1Group);
           map.removeLayer(flightPlanMarkersSize3Group);
           map.removeLayer(flightPlanMarkersSize4Group);
+          map.removeLayer(flightPlanMarkersSize5Group);
           map.addLayer(flightPlanMarkersSize2Group);
           map.addLayer(flightPlanMarkersAirportGroup1);
-          map.removeLayer(flightPlanMarkersAirportGroup1);
+          map.removeLayer(flightPlanMarkersAirportGroup2);
         } else 
         if ( map.getZoom() >= zoomIconSize3[0] &&  map.getZoom() <= zoomIconSize3[1] )   {
-          console.log("Size3");
+          size = "Size3";
           map.removeLayer(flightPlanMarkersSize1Group);
           map.removeLayer(flightPlanMarkersSize2Group);
           map.removeLayer(flightPlanMarkersSize4Group);
+          map.removeLayer(flightPlanMarkersSize5Group);
           map.addLayer(flightPlanMarkersSize3Group);
           map.addLayer(flightPlanMarkersAirportGroup2);
-          map.removeLayer(flightPlanMarkersAirportGroup2);
+          map.removeLayer(flightPlanMarkersAirportGroup1);
         } else 
         if ( map.getZoom() >= zoomIconSize4[0] &&  map.getZoom() <= zoomIconSize4[1] )   {
-          console.log("Size4");
+          size = "Size4";
           map.removeLayer(flightPlanMarkersSize1Group);
           map.removeLayer(flightPlanMarkersSize2Group);
           map.removeLayer(flightPlanMarkersSize3Group);
+          map.removeLayer(flightPlanMarkersSize5Group);
           map.addLayer(flightPlanMarkersSize4Group);
           map.addLayer(flightPlanMarkersAirportGroup2);
-          map.removeLayer(flightPlanMarkersAirportGroup2);
+          map.removeLayer(flightPlanMarkersAirportGroup1);
+        } else 
+        if ( map.getZoom() >= zoomIconSize5[0] &&  map.getZoom() <= zoomIconSize5[1] )   {
+          size = "Size4";
+          map.removeLayer(flightPlanMarkersSize1Group);
+          map.removeLayer(flightPlanMarkersSize2Group);
+          map.removeLayer(flightPlanMarkersSize3Group);
+          map.removeLayer(flightPlanMarkersSize4Group);
+          map.addLayer(flightPlanMarkersSize5Group);
+          map.addLayer(flightPlanMarkersAirportGroup2);
+          map.removeLayer(flightPlanMarkersAirportGroup1);  
         } else {
           map.removeLayer(flightPlanMarkersSize1Group);
           map.removeLayer(flightPlanMarkersSize2Group);
           map.removeLayer(flightPlanMarkersSize3Group);
           map.removeLayer(flightPlanMarkersSize4Group);
+          map.removeLayer(flightPlanMarkersSize5Group);
           map.addLayer(flightPlanMarkersAirportGroup2);
-          map.removeLayer(flightPlanMarkersAirportGroup2);
+          map.removeLayer(flightPlanMarkersAirportGroup1);
         }
+        console.log( "Zoom..:" + map.getZoom() + ", Size..:" + size);
+        this.utils.trace("Zoom..:" + map.getZoom() + ", Size..:" + size);
       }
     }
 
@@ -373,31 +408,23 @@ export class FlightPlan {
         return nextDestinationMarker;
     }
 
-    createNextDestinationCircle(navaid, iconSize) {
+    createNextDestinationCircle(navaid, zoom) {
         let radius;
-        if ( iconSize == 3 ) {
+        let weight;
+        if ( zoom >= 7 ) {
+          weight = 3;
+          radius = 8;
+        } else 
+        if ( zoom >= 6 ) {
+          weight = 2;
           radius = 6;
-        } else
-        if ( iconSize == 4 ) {
-          radius = 2;
-        } 
-        let icon = iconSize.LOCATION_ICON;
-        if ( "NDB" == navaid.type ) {
-            icon = iconSize.NDB_ICON;
-        } else
-        if ( "VOR" == navaid.type ) {
-            icon = iconSize.VOR_ICON;
-        } else
-        if ( "FIX" == navaid.type ) {
-            icon = iconSize.FIX_ICON;
-        } else
-        if ( "Lat/Lng" == navaid.type ) {
-            icon = iconSize.LATLNG_ICON;
-        } else
-        if ( "Airport" == navaid.type ) {
-            icon = iconSize.AIRPORT_ICON;
+        } else 
+        if ( zoom >= 5 ) {
+          weight = 1;
+          radius = 3;  
         } else {
-          this.utils.warn(navaid.type + " Not found an ICON for it!!!");
+          weight = 5;
+          radius = 20;
         }
         this.utils.trace("Adding next destination marker to " + navaid.latitude + ":" + navaid.longitude);
         var circle = new leaflet.circleMarker([navaid.latitude,navaid.longitude],
@@ -406,15 +433,15 @@ export class FlightPlan {
           stroke: true,
           color: 'black',
           fillColor: 'white',
-          fillOpacity: 0.5,
-          weight: 1,
+          fillOpacity: 0.85,
+          weight: weight,
           lineCap: 'round'
         });
         let htmlPopup                = this.destinationHtmlPopup(navaid);
         var nextDestinationPopUp     = circle.bindPopup(htmlPopup);
         nextDestinationPopUp.setLatLng([navaid.latitude,navaid.longitude]);
         return circle;
-     }
+    }
 
     createAirportMarker(navaid, iconSize) {
       let icon     = iconSize.AIRPORT_ICON;
@@ -425,7 +452,7 @@ export class FlightPlan {
       var nextDestinationPopUp     = nextDestinationMarker.bindPopup(htmlPopup);
       nextDestinationPopUp.setLatLng([navaid.latitude,navaid.longitude]);
       return nextDestinationMarker;
-  }
+    }
 
     destinationHtmlPopup(navaid, markerFrom?, airplaneLocation?) {
         let paddingValue  = 3;
