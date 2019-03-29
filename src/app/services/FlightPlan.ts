@@ -158,7 +158,9 @@ centerMarker.setIcon(icon);
 @Injectable()
 export class FlightPlan {
 
-    versionPrinted = 0;
+    airplaneData;
+    versionPrinted      = 0;
+    flightPlanWaypoints = []
 
     constructor(public utils: Utils,
         public aviation: Aviation) {
@@ -175,9 +177,11 @@ export class FlightPlan {
         map = _map;
     }
 
-    showFlightPlan(flightPlan){
+    showFlightPlan(flightPlan, _airplaneData){
         this.utils.debug(flightPlan);
         if ( flightPlan  ) {
+            this.airplaneData = _airplaneData;
+
             // clean previous if exists
             this.cleanPreviousFlightPlan();
 
@@ -207,12 +211,13 @@ export class FlightPlan {
                     distanceFromPreviousWpt = Math.floor(this.aviation.distance(wpt.longitude, wpt.latitude, previousLatLng[1], previousLatLng[0]));
                     distanceFromDepartWpt   = Math.floor(this.aviation.distance(wpt.longitude, wpt.latitude, departLatLng[1], departLatLng[0]));
 
-                    var msg = previousLatLng[2] + " to " + wpt.id + " " + distanceFromPreviousWpt + " From Departing " + distanceFromDepartWpt;
-                    console.log(msg);
+                    //var msg = previousLatLng[2] + " to " + wpt.id + " " + distanceFromPreviousWpt + " From Departing " + distanceFromDepartWpt;
+                    //console.log(msg);
                   }
 
                   // Marker Navaids
                   marker = this.createNextDestinationMarker(wpt,iconSize1);
+                  this.flightPlanWaypoints.push(marker);
                   flightPlanMarkersSize1Group.addLayer(marker);
 
                   marker = this.createNextDestinationMarker(wpt,iconSize2);
@@ -272,7 +277,10 @@ export class FlightPlan {
     }
 
     private addAirportToGroups(wpt: any) {
-      flightPlanMarkersAirportGroup1.addLayer(this.createAirportMarker(wpt, iconSize1));
+      let waypoint = this.createAirportMarker(wpt, iconSize1);
+      flightPlanMarkersAirportGroup1.addLayer(waypoint);
+      this.flightPlanWaypoints.push(waypoint);
+      waypoint = this.createAirportMarker(wpt, iconSize1);
       flightPlanMarkersAirportGroup2.addLayer(this.createAirportMarker(wpt, iconSize2));
     }
 
@@ -313,6 +321,38 @@ export class FlightPlan {
       if ( flightPlanMarkersAirportGroup2 ) {
         map.removeLayer(flightPlanMarkersAirportGroup2);
       }
+    }
+
+    updateAirplaneData(_airplaneData) {
+      console.log("updateAirplaneData");
+      this.airplaneData = _airplaneData;
+      this.updateMarkerPopUps();
+    }
+
+    updateMarkerPopUps() {
+      flightPlanMarkersAirportGroup1.eachLayer(function(layer){
+        console.log(layer.getLatLng());
+        //layer.setPopupContent("<h2>nothing</h2>");
+      });
+      flightPlanMarkersAirportGroup2.eachLayer(function(layer){
+        //layer.setPopupContent("<h2>nothing</h2>");
+      });
+      flightPlanMarkersSize1Group.eachLayer(function(layer){
+        console.log(layer.getLatLng());
+        //layer.setPopupContent("<h2>nothing</h2>");
+      });
+      flightPlanMarkersSize2Group.eachLayer(function(layer){
+        //layer.setPopupContent("<h2>nothing</h2>");
+      });
+      flightPlanMarkersSize3Group.eachLayer(function(layer){
+        //layer.setPopupContent("<h2>nothing</h2>");
+      });
+      flightPlanMarkersSize4Group.eachLayer(function(layer){
+        //layer.setPopupContent("<h2>nothing</h2>");
+      });
+      flightPlanMarkersSize5Group.eachLayer(function(layer){
+        //layer.setPopupContent("<h2>nothing</h2>");
+      });
     }
 
     adaptFlightPlanToZoom(zoom) {
@@ -401,13 +441,14 @@ export class FlightPlan {
           this.utils.warn(navaid.type + " Not found an ICON for it!!!");
         }
         this.utils.trace("Adding next destination marker to " + navaid.latitude + ":" + navaid.longitude);
-        var nextDestinationMarker    = leaflet.marker([navaid.latitude,navaid.longitude], {icon: icon});
-        let htmlPopup                = this.destinationHtmlPopup(navaid);
-        var nextDestinationPopUp     = nextDestinationMarker.bindPopup(htmlPopup);
-        nextDestinationPopUp.setLatLng([navaid.latitude,navaid.longitude]);
-        return nextDestinationMarker;
+        let marker        = leaflet.marker([navaid.latitude,navaid.longitude], {icon: icon});
+        let htmlPopup     = this.createPopUp(navaid);
+        let markerPopUp   = marker.bindPopup(htmlPopup);
+        let markerTooltip = this.createTooltip(navaid);
+        markerPopUp.setLatLng([navaid.latitude,navaid.longitude]);
+        marker.bindTooltip(markerTooltip,{opacity:0.85}).openTooltip();
+        return marker;
     }
-
     createNextDestinationCircle(navaid, zoom) {
         let radius;
         let weight;
@@ -437,58 +478,47 @@ export class FlightPlan {
           weight: weight,
           lineCap: 'round'
         });
-        let htmlPopup                = this.destinationHtmlPopup(navaid);
-        var nextDestinationPopUp     = circle.bindPopup(htmlPopup);
-        nextDestinationPopUp.setLatLng([navaid.latitude,navaid.longitude]);
+        let htmlPopup    = this.createPopUp(navaid);
+        let markerPopUp  = circle.bindPopup(htmlPopup);
+        markerPopUp.setLatLng([navaid.latitude,navaid.longitude]);
+        let toolTip      = this.createTooltip(navaid);
+        circle.bindTooltip(toolTip,{opacity:0.85}).openTooltip();
         return circle;
     }
 
     createAirportMarker(navaid, iconSize) {
-      let icon     = iconSize.AIRPORT_ICON;
+      let icon          = iconSize.AIRPORT_ICON;
       this.utils.trace("Adding next destination marker to " + navaid.latitude + ":" + navaid.longitude);
-      //var nextDestinationMarker    = leaflet.marker([navaid.latitude,navaid.longitude], {icon: icon}).addTo(map);
-      var nextDestinationMarker    = leaflet.marker([navaid.latitude,navaid.longitude], {icon: icon});
-      let htmlPopup                = this.destinationHtmlPopup(navaid);
-      var nextDestinationPopUp     = nextDestinationMarker.bindPopup(htmlPopup);
-      nextDestinationPopUp.setLatLng([navaid.latitude,navaid.longitude]);
-      return nextDestinationMarker;
+      let marker        = leaflet.marker([navaid.latitude,navaid.longitude], {icon: icon});
+      let htmlPopup     = this.createPopUp(navaid);
+      let markerPopUp   = marker.bindPopup(htmlPopup);
+      let markerTooltip = this.createTooltip(navaid);
+      markerPopUp.setLatLng([navaid.latitude,navaid.longitude]);
+      marker.bindTooltip(markerTooltip,{opacity:0.85}).openTooltip();
+      return marker;
     }
 
-    destinationHtmlPopup(navaid, markerFrom?, airplaneLocation?) {
+    createTooltip(navaid) {
+      let html = `
+          <span style="font-size:12px;"><b>` + navaid.name + `</b></span>
+      `;
+      return html;
+    }
+
+    createPopUp(navaid) {
         let paddingValue  = 3;
         let fontSizeLabel = 12;
         let fontSizeValue = 12;
         let fontSizeUnit  = 11;
 
-        let time;
-        if ( navaid.fmsTime ) {
-          time = navaid.fmsTime;
-        } else {
-          time = navaid.dmeTime;
-        }
-        let timeCell = `
-          <tr>
-            <td>
-              <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Time.....:</span>
-            </td>
-            <td align="right" style="padding-right:` + paddingValue + `px;">
-              <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + time + `</span>
-            </td>
-            <td>
-              <span style="color:black;font-weight:bold;font-size:` + fontSizeUnit +`px;"> </span>
-            </td>
-          </tr>
-        `;
-        if ( markerFrom ) {
-          timeCell = "";
-        }
-
         let distance;
-        if ( markerFrom ) {
-            distance = markerFrom.getLatLng().distanceTo(airplaneLocation) * 0.000539957; // Convert meters to nautical miles
-            distance = this.utils.formatNumber(Math.round(distance)) ; 
+        if ( this.airplaneData ) {
+            let distFrom = new leaflet.latLng(this.airplaneData.lat, this.airplaneData.lng);
+            let distTo   = new leaflet.latLng(navaid.latitude, navaid.longitude);
+            distance = distFrom.distanceTo(distTo) * 0.000539957; // Convert meters to nautical miles
+            distance = this.utils.formatNumber(Math.round(distance)); 
         } else {
-            distance = this.utils.formatNumber(navaid.distance);
+            distance = 9999;
         }
     
         let idCell = `
@@ -526,7 +556,6 @@ export class FlightPlan {
               <span style="color:black;font-weight:bold;font-size:` + fontSizeUnit +`px;">nm</span>
             </td>
           </tr>
-          ` + timeCell + `
           <tr>
             <td>
               <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Navaid...:</span>

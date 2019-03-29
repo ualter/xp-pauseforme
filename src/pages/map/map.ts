@@ -87,7 +87,7 @@ var staticAlertController;
 var attempingConnectTimes = 0;
 var toastPresented;
 var threadAttemptToConnect;
-var nextDestVector;
+var lastAirplaneData;
 
 enum State {
   DISCONNECTED = 0,
@@ -318,12 +318,15 @@ export class MapPage {
     } 
     // Reposition the Airplane new give Lat/Lng
     this.updateAirplanePosition(json.airplane, bearing);
-    lastLat = json.airplane.lat;
-    lastLng = json.airplane.lng;
+    lastLat          = json.airplane.lat;
+    lastLng          = json.airplane.lng;
+    lastAirplaneData = json.airplane; 
+
+    this.flightPlan.updateAirplaneData(lastAirplaneData);
   }
   
   updateFlightPlan(flightPlan) {
-    this.flightPlan.showFlightPlan(flightPlan);
+    this.flightPlan.showFlightPlan(flightPlan, lastAirplaneData);
   }
   updateAirplanePosition(airplaneData, bearing) {
     this.utils.trace("Airplane new position (Lat/Lng): " + airplaneData.lat + ":" + airplaneData.lng);
