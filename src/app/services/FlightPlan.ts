@@ -2,9 +2,7 @@ import { Injectable } from "@angular/core";
 import { Utils } from "./Utils";
 import { Aviation } from './Aviation';
 import leaflet from 'leaflet';
-import { isRightSide } from "ionic-angular/umd/util/util";
-import { MapOperator } from "rxjs/operators/map";
-import { connectableObservableDescriptor } from "rxjs/observable/ConnectableObservable";
+import { Observable, Subject } from 'rxjs'; 
 
 var map;
 var flightPlanPaths = [];
@@ -159,8 +157,10 @@ centerMarker.setIcon(icon);
 export class FlightPlan {
 
     airplaneData;
-    versionPrinted      = 0;
-    flightPlanWaypoints = []
+    airplaneLastLat     = 9999;
+    airplaneLastLng     = 9999;
+    flightPlanWaypoints = [];
+    flightPlanObservable;
 
     constructor(public utils: Utils,
         public aviation: Aviation) {
@@ -171,6 +171,11 @@ export class FlightPlan {
           flightPlanMarkersSize3Group    = new leaflet.FeatureGroup();
           flightPlanMarkersSize4Group    = new leaflet.FeatureGroup();
           flightPlanMarkersSize5Group    = new leaflet.FeatureGroup();
+
+          this.flightPlanObservable = new Subject<any>();
+          this.flightPlanObservable.asObservable().subscribe(message => {
+            this.updateMarkerPopUps(message);
+          });
     }        
 
     setMap(_map) {
@@ -192,6 +197,8 @@ export class FlightPlan {
 
             for (var index = 0; index < flightPlan.waypoints.length; ++index) {
                 var wpt = flightPlan.waypoints[index];
+                let flightPlanWaypoint = [];
+                flightPlanWaypoint["navaid"] = wpt;
                 pointList.push(new leaflet.LatLng(wpt.latitude,wpt.longitude));
 
                 let distanceFromPreviousWpt = 0;
@@ -200,11 +207,11 @@ export class FlightPlan {
                 // Depart Airport
                 if ( index == 0 ) {
                   departLatLng = [wpt.latitude, wpt.longitude, wpt.id];
-                  this.addAirportToGroups(wpt);
+                  this.addAirportToGroups(wpt,true);
                 } else
                 // Arrival Airport
                 if ( index == (flightPlan.waypoints.length - 1) ) {
-                  this.addAirportToGroups(wpt);
+                  this.addAirportToGroups(wpt,false);
                 } else {
                   if ( previousLatLng.length > 0 ) {
                     // Calculating distances From Depart Airport and from Last Waypoint
@@ -217,23 +224,26 @@ export class FlightPlan {
 
                   // Marker Navaids
                   marker = this.createNextDestinationMarker(wpt,iconSize1);
-                  this.flightPlanWaypoints.push(marker);
+                  flightPlanWaypoint["marker1"] = marker;
                   flightPlanMarkersSize1Group.addLayer(marker);
 
                   marker = this.createNextDestinationMarker(wpt,iconSize2);
+                  flightPlanWaypoint["marker2"] = marker;
                   flightPlanMarkersSize2Group.addLayer(marker);
 
                   marker = this.createNextDestinationCircle(wpt,7);
+                  flightPlanWaypoint["marker3"] = marker;
                   flightPlanMarkersSize3Group.addLayer(marker);
 
                   marker = this.createNextDestinationCircle(wpt,6);
+                  flightPlanWaypoint["marker4"] = marker;
                   flightPlanMarkersSize4Group.addLayer(marker);
 
                   marker = this.createNextDestinationCircle(wpt,5);
+                  flightPlanWaypoint["marker5"] = marker;
                   flightPlanMarkersSize5Group.addLayer(marker);
-                  
-                  if (  distanceFromPreviousWpt <= 100 ) {
-                  } 
+
+                  this.flightPlanWaypoints.push(flightPlanWaypoint);
                 }
 
                 // Vector FlightPlan
@@ -272,16 +282,37 @@ export class FlightPlan {
               map.addLayer(flightPlanMarkersSize4Group);
             }
 
-            this.versionPrinted = flightPlan.version;
+            this.flightPlanObservable.next(
+              {
+                event: "call",
+                method: "showFlightPlan"
+              }
+            );
         }
     }
 
-    private addAirportToGroups(wpt: any) {
-      let waypoint = this.createAirportMarker(wpt, iconSize1);
-      flightPlanMarkersAirportGroup1.addLayer(waypoint);
-      this.flightPlanWaypoints.push(waypoint);
-      waypoint = this.createAirportMarker(wpt, iconSize1);
-      flightPlanMarkersAirportGroup2.addLayer(this.createAirportMarker(wpt, iconSize2));
+    private addAirportToGroups(wpt: any, departure: boolean) {
+      let marker;  
+      let flightPlanWaypoint       = [];
+      flightPlanWaypoint["navaid"] = wpt;
+
+      marker = this.createAirportMarker(wpt, iconSize1);
+      flightPlanMarkersAirportGroup1.addLayer(marker);
+      if (departure) {
+        flightPlanWaypoint["departure1"] = marker;
+      } else  {
+        flightPlanWaypoint["arrival1"] = marker;
+      }
+
+      marker = this.createAirportMarker(wpt, iconSize2);
+      flightPlanMarkersAirportGroup2.addLayer(marker);
+      if (departure) {
+        flightPlanWaypoint["departure2"] = marker;
+      } else  {
+        flightPlanWaypoint["arrival2"] = marker;
+      }
+
+      this.flightPlanWaypoints.push(flightPlanWaypoint);
     }
 
     cleanPreviousFlightPlan() {
@@ -323,36 +354,39 @@ export class FlightPlan {
       }
     }
 
+    
+  
     updateAirplaneData(_airplaneData) {
-      console.log("updateAirplaneData");
-      this.airplaneData = _airplaneData;
-      this.updateMarkerPopUps();
+      // The avirplane has moved?
+      if ( (this.airplaneLastLat != _airplaneData.lat) || (this.airplaneLastLng != _airplaneData.lng) ) {
+        this.airplaneData = _airplaneData;
+        this.updateMarkerPopUps();
+        this.airplaneLastLat = this.airplaneData.lat;
+        this.airplaneLastLng = this.airplaneData.lng;
+      }
+      
     }
 
-    updateMarkerPopUps() {
-      flightPlanMarkersAirportGroup1.eachLayer(function(layer){
-        console.log(layer.getLatLng());
-        //layer.setPopupContent("<h2>nothing</h2>");
-      });
-      flightPlanMarkersAirportGroup2.eachLayer(function(layer){
-        //layer.setPopupContent("<h2>nothing</h2>");
-      });
-      flightPlanMarkersSize1Group.eachLayer(function(layer){
-        console.log(layer.getLatLng());
-        //layer.setPopupContent("<h2>nothing</h2>");
-      });
-      flightPlanMarkersSize2Group.eachLayer(function(layer){
-        //layer.setPopupContent("<h2>nothing</h2>");
-      });
-      flightPlanMarkersSize3Group.eachLayer(function(layer){
-        //layer.setPopupContent("<h2>nothing</h2>");
-      });
-      flightPlanMarkersSize4Group.eachLayer(function(layer){
-        //layer.setPopupContent("<h2>nothing</h2>");
-      });
-      flightPlanMarkersSize5Group.eachLayer(function(layer){
-        //layer.setPopupContent("<h2>nothing</h2>");
-      });
+    updateMarkerPopUps(event?) {
+      for(var m in this.flightPlanWaypoints) {
+        let waypoint  = this.flightPlanWaypoints[m];
+        let htmlPopup = this.createPopUp(waypoint.navaid);
+
+        if ( waypoint.departure1 ) {
+            waypoint.departure1.setPopupContent(htmlPopup);
+            waypoint.departure2.setPopupContent(htmlPopup);
+        } else
+        if ( waypoint.arrival1 ) { 
+            waypoint.arrival1.setPopupContent(htmlPopup);
+            waypoint.arrival2.setPopupContent(htmlPopup);
+        } else {
+          waypoint.marker1.setPopupContent(htmlPopup);
+          waypoint.marker2.setPopupContent(htmlPopup);
+          waypoint.marker3.setPopupContent(htmlPopup);
+          waypoint.marker4.setPopupContent(htmlPopup);
+          waypoint.marker5.setPopupContent(htmlPopup);
+        }
+      }
     }
 
     adaptFlightPlanToZoom(zoom) {

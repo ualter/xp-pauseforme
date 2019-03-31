@@ -73,7 +73,6 @@ var lastLng;
 var lastBearing;
 var airplaneMarker;
 var nextDestinationMarker;
-var nextDestinationPopUp;
 var airplanePopup;    
 var followAirplane;
 var gamePaused;
