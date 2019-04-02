@@ -34,16 +34,6 @@ page-map {
     z-index: 600;
     opacity: 1;
 }
-#labelWaiting {
-    top: 23%;
-    left: 50.8%;
-    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
-    font-weight: 1000;
-    font-size: 16px;
-    transform: translate(-50%, -50%);
-    z-index: 600;
-    opacity: 1;
-}
 
 #connectingGif {
     top: 40%;
@@ -54,8 +44,8 @@ page-map {
 }
 
 #labelConnecting {
-    top: 35%;
-    left: 51%;
+    top: 31%;
+    left: 50%;
     font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
     font-weight: 1000;
     font-size: 16px;
@@ -63,6 +53,37 @@ page-map {
     //animation: blinker 1s linear infinite;
     z-index: 600;
     opacity: 0;
+}
+
+.boxContactingXPlane {
+    background-color:rgba(255, 255, 255, 0.85);
+    border-radius:7px;
+    width:160px;
+    height:50px;
+    box-shadow: 5px 10px 8px #888888;
+    line-height: 50px; 
+    text-align: center;
+}
+
+.boxWait {
+    background-color:rgba(255, 255, 255, 0.85);
+    border-radius:7px;
+    width:160px;
+    height:50px;
+    box-shadow: 5px 10px 8px #888888;
+    line-height: 50px; 
+    text-align: center;
+}
+
+#labelWaiting {
+    top: 30.5%;
+    left: 50.8%;
+    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+    font-weight: 1000;
+    font-size: 16px;
+    transform: translate(-50%, -50%);
+    z-index: 600;
+    opacity: 1;
 }
 
 #buttonConnect{
