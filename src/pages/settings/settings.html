@@ -15,19 +15,19 @@
 
     <ion-list>
       <ion-list-header>
-        <ion-icon item-start name="plane" color="primary"></ion-icon>
+        <ion-thumbnail item-start class="ion-thumbnailSize"><img src="assets/imgs/xplane-logo-35.png" class="imgThumbnailSize" style="width:35px;height:35px;" ></ion-thumbnail>
         X-Plane Communication
       </ion-list-header>
   
       <ion-item-group>
         <ion-item>
-          <ion-icon name="link" item-start color="primary"></ion-icon>
+          <ion-icon name="link" item-start></ion-icon>
           <ion-label>Address:</ion-label>
           <ion-input type="text" placeholder="127.0.0.1" [(ngModel)]="xplaneAddress" color="primary"></ion-input>
         </ion-item>
   
         <ion-item>
-          <ion-icon name="link" item-start color="primary"></ion-icon>
+          <ion-icon name="link" item-start></ion-icon>
           <ion-label>Port:</ion-label>
           <ion-input type="text" placeholder="9002" [(ngModel)]="xplanePort"></ion-input>
         </ion-item>
@@ -36,11 +36,11 @@
   
     <ion-list>
       <ion-list-header>
-        <ion-icon item-start name="phone-portrait" color="primary"></ion-icon>
-        Myself
+        <ion-icon item-start name="person" color="primary"></ion-icon>
+        Me
       </ion-list-header>
       <ion-item>
-          <ion-icon name="person" item-start color="primary"></ion-icon>
+          <ion-icon name="phone-portrait" item-start></ion-icon>
           <ion-label>Name:</ion-label>
           <ion-input type="text" placeholder="9002" [(ngModel)]="name"></ion-input>
         </ion-item>
@@ -52,7 +52,7 @@
             Maps Config
         </ion-list-header>
         <button ion-item (click)="openAirplanesPage()" icon-start>
-            <ion-icon [name]="'logo-angular'" item-start></ion-icon>
+            <ion-icon name="plane" item-start></ion-icon>
             Airplane Icon
         </button>
     </ion-list>
