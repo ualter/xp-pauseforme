@@ -1,0 +1,41 @@
+
+<ion-header>
+  <ion-navbar>
+      <ion-title>Airplanes</ion-title>
+  </ion-navbar>
+</ion-header>
+
+
+<ion-content class="outer-content">
+
+    <ion-list>
+      <ion-list-header>
+        <ion-icon item-start name="plane" color="primary"></ion-icon>
+        Airplanes
+      </ion-list-header>
+  
+      <ion-item-group>
+        <ion-item>
+            <ion-thumbnail item-start>
+                <img src="assets/imgs/airplane-a320.png" alt="your image">
+            </ion-thumbnail>
+            <ion-radio checked="true" value="go">A320</ion-radio>
+        </ion-item>
+      </ion-item-group>
+    </ion-list>
+
+    
+  
+    <ion-row>
+        <ion-col width-100 style="text-align: center">
+            <button ion-button Large (click)="saveSettings()">
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Save
+                &nbsp;
+                <ion-icon name="create" color="light"></ion-icon>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            </button>
+        </ion-col>
+    </ion-row>
+ 
+  </ion-content>
+

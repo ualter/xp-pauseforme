@@ -72,7 +72,6 @@ var lastLat;
 var lastLng;     
 var lastBearing;
 var airplaneMarker;
-var nextDestinationMarker;
 var airplanePopup;    
 var followAirplane;
 var gamePaused;
@@ -570,7 +569,6 @@ export class MapPage {
     }
 
     this.adaptAirplaneIconSizeToZoom(size);
-    this.adaptNextDestinationIconSizeToZoom(size);
     this.adaptFlightPlanToZoom(zoom); 
   }
 
@@ -594,23 +592,6 @@ export class MapPage {
        airplaneMarker.setIcon(AIRPLANE_ICON);
        MapPage.rotateMarker(lastBearing);
      }
-  }
-
-  adaptNextDestinationIconSizeToZoom(size) {
-    // Adapt the Next Destinations's Icon Size to the current Zoom Level
-    NDB_ICON.options.iconSize[0]   = (NDB_ICON_WIDTH   - size[0]);
-    NDB_ICON.options.iconSize[1]   = (NDB_ICON_HEIGHT  - size[1]);
-    NDB_ICON.options.shadowSize[0] = (NDB_ICON_WIDTH   - size[0]);
-    NDB_ICON.options.shadowSize[1] = (NDB_ICON_HEIGHT  - size[1]);
-    var widthAnchor  = (NDB_ICON.options.iconSize[0] / 4);
-    var heightAnchor = (NDB_ICON.options.iconSize[0] / 2);
-    NDB_ICON.options.iconAnchor[0]   = widthAnchor;
-    NDB_ICON.options.iconAnchor[1]   = heightAnchor;
-    NDB_ICON.options.shadowAnchor[0] = widthAnchor;
-    NDB_ICON.options.shadowAnchor[1] = heightAnchor;
-    if ( nextDestinationMarker ) {
-      nextDestinationMarker.setIcon(NDB_ICON);
-    }
   }
 
   // Localization Button Control Creation for Leaflet maps

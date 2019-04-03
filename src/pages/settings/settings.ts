@@ -1,6 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
 import { NavController, NavParams } from 'ionic-angular';
 import { DataService } from '../../app/services/DataService';
+import { Nav, Platform } from 'ionic-angular';
+import { AirplanesPage } from '../airplanes/airplanes';
 
 @Component({
   selector: 'page-settings',
@@ -47,6 +49,10 @@ export class SettingsPage {
       this.dataService.saveDataSettings();
       this.dataService.notifyDataSettingsSubscribers();
     }
+  }
+
+  openAirplanesPage() {
+    this.navCtrl.push(AirplanesPage);
   }
 
 }

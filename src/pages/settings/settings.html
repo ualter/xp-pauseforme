@@ -45,7 +45,18 @@
           <ion-input type="text" placeholder="9002" [(ngModel)]="name"></ion-input>
         </ion-item>
     </ion-list>
-  
+
+    <ion-list>
+        <ion-list-header>
+            <ion-icon item-start name="map" color="primary"></ion-icon>
+            Maps Config
+        </ion-list-header>
+        <button ion-item (click)="openAirplanesPage()" icon-start>
+            <ion-icon [name]="'logo-angular'" item-start></ion-icon>
+            Airplane Icon
+        </button>
+    </ion-list>
+
     <ion-row>
         <ion-col width-100 style="text-align: center">
             <button ion-button Large (click)="saveSettings()">

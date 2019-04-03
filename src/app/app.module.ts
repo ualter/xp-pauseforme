@@ -17,12 +17,14 @@ import { DataService } from './services/DataService';
 import { DataSettings } from './services/DataSettings';
 import { Router } from './services/Router';
 import { FlightPlan } from './services/FlightPlan';
+import { AirplanesPage } from '../pages/airplanes/airplanes';
 
 @NgModule({
   declarations: [
     MyApp,
     MapPage,
     SettingsPage,
+    AirplanesPage,
     TabsPage
   ],
   imports: [
@@ -36,6 +38,7 @@ import { FlightPlan } from './services/FlightPlan';
     MyApp,
     MapPage,
     SettingsPage,
+    AirplanesPage,
     TabsPage
   ],
   providers: [
