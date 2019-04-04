@@ -8,8 +8,9 @@ import { DataService } from '../../app/services/DataService';
 })
 export class AirplanesPage {
 
-  company: string;
-  model: string;
+  company: string = "";
+  model: string   = "";
+  previousModel: string = "";
 
 
   constructor(
@@ -42,8 +43,11 @@ export class AirplanesPage {
   }
 
   onChangeHandler(event: string) {
-    this.dataService.changeSettingsAirplaneCompany(this.company);
-    this.dataService.changeSettingsAirplaneModel(event);
+    if ( event != this.previousModel) {
+      this.dataService.changeSettingsAirplaneCompany(this.company);
+      this.dataService.changeSettingsAirplaneModel(event);
+      this.previousModel = event;
+    }
   }
 
 }

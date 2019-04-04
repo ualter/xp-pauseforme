@@ -12,6 +12,7 @@ export enum LogLevel {
 @Injectable()
 export class Utils {
 
+    PATH_IMG_AIRPLANES: string = "assets/imgs/airplanes/";
     level: LogLevel = LogLevel.DEBUG;
 
     monthNames = [
