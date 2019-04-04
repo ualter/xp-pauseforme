@@ -3,71 +3,87 @@
   <ion-navbar>
       <ion-title>Airplanes</ion-title>
   </ion-navbar>
+  <ion-toolbar no-border-top>
+      <ion-segment [(ngModel)]="company"> 
+        <ion-segment-button value="boeing">
+          Boeing
+        </ion-segment-button>
+        <ion-segment-button value="airbus">
+          Airbus
+        </ion-segment-button>
+        <ion-segment-button value="generics">
+          Generics
+        </ion-segment-button>
+      </ion-segment>
+    </ion-toolbar>
 </ion-header>
 
 
 <ion-content class="outer-content">
+  <div [ngSwitch]="company">
+    <ion-list radio-group *ngSwitchCase="'boeing'" (ionChange)="onChangeHandler($event)" [(ngModel)]="model">
 
-    <ion-list radio-group>
-      <ion-list-header>
-        <ion-icon item-start name="plane" color="primary"></ion-icon>
-        Airplanes
-      </ion-list-header>
-  
+    </ion-list>
+
+    <ion-list radio-group *ngSwitchCase="'airbus'" (ionChange)="onChangeHandler($event)" [(ngModel)]="model">
       <ion-item-group>
         <ion-item>
             <ion-label>A310</ion-label>
             <ion-thumbnail item-start>
                 <img src="assets/imgs/airplanes/airplane-a310.png" alt="your image">
             </ion-thumbnail>
-            <ion-radio checked="false" value="a310"></ion-radio>
+            <ion-radio value="a310" ></ion-radio>
         </ion-item>
         <ion-item>
             <ion-label>A320</ion-label>
             <ion-thumbnail item-start>
                 <img src="assets/imgs/airplanes/airplane-a320.png" alt="your image">
             </ion-thumbnail>
-            <ion-radio checked="true" value="a320"></ion-radio>
+            <ion-radio  value="a320"></ion-radio>
         </ion-item>
         <ion-item>
             <ion-label>A330</ion-label>
             <ion-thumbnail item-start>
                 <img src="assets/imgs/airplanes/airplane-a330.png" alt="your image">
             </ion-thumbnail>
-            <ion-radio checked="false" value="a330"></ion-radio>
+            <ion-radio value="a330"></ion-radio>
         </ion-item>
         <ion-item>
             <ion-label>A340</ion-label>
             <ion-thumbnail item-start>
                 <img src="assets/imgs/airplanes/airplane-a340.png" alt="your image">
             </ion-thumbnail>
-            <ion-radio checked="false" value="a340"></ion-radio>
+            <ion-radio value="a340"></ion-radio>
         </ion-item>
         <ion-item>
             <ion-label>A350</ion-label>
             <ion-thumbnail item-start>
                 <img src="assets/imgs/airplanes/airplane-a350.png" alt="your image">
             </ion-thumbnail>
-            <ion-radio checked="false" value="a350"></ion-radio>
+            <ion-radio value="a350"></ion-radio>
         </ion-item>
         <ion-item>
             <ion-label>A380</ion-label>
             <ion-thumbnail item-start>
                 <img src="assets/imgs/airplanes/airplane-a380.png" alt="your image">
             </ion-thumbnail>
-            <ion-radio checked="false" value="a380"></ion-radio>
+            <ion-radio value="a380"></ion-radio>
         </ion-item>
+        
+      </ion-item-group>
+    </ion-list>
+
+    <ion-list radio-group *ngSwitchCase="'generics'" (ionChange)="onChangeHandler($event)" [(ngModel)]="model">
         <ion-item>
             <ion-label>Cesna 147</ion-label>
             <ion-thumbnail item-start>
                 <img src="assets/imgs/airplanes/cesna-147.png" alt="your image">
             </ion-thumbnail>
-            <ion-radio checked="false" value="cesna147"></ion-radio>
+            <ion-radio value="cesna147"></ion-radio>
         </ion-item>
-      </ion-item-group>
     </ion-list>
 
-    
+  </div>  
   
     <ion-row>
         <ion-col width-100 style="text-align: center">

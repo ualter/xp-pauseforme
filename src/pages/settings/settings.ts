@@ -10,9 +10,11 @@ import { AirplanesPage } from '../airplanes/airplanes';
 })
 export class SettingsPage {
 
-  xplaneAddress: string = "localhost";
-  xplanePort: string    = "9002";
-  name: string          = "UALTER Desktop";
+  xplaneAddress: string   = "localhost";
+  xplanePort: string      = "9002";
+  name: string            = "UALTER Desktop";
+  airplaneCompany: string = "airbus"; 
+  airplaneModel: string   = "a320";
 
   constructor(
     public navCtrl: NavController, 
@@ -23,6 +25,8 @@ export class SettingsPage {
       this.xplaneAddress = dataSettings.xplaneAddress;
       this.xplanePort = dataSettings.xplanePort;
       this.name = dataSettings.name; 
+      this.airplaneCompany = dataSettings.airplaneCompany;
+      this.airplaneModel = dataSettings.airplaneModel;
     });
   }
 
@@ -52,7 +56,10 @@ export class SettingsPage {
   }
 
   openAirplanesPage() {
-    this.navCtrl.push(AirplanesPage);
+    this.navCtrl.push(AirplanesPage, {
+      firstPassed: "value 1",
+      secondPassed: "value 2"
+    });
   }
 
 }

@@ -43,6 +43,14 @@ export class DataService {
         this.dataSettings.name = name;
     }
 
+    changeSettingsAirplaneCompany(airplaneCompany:string) {
+        this.dataSettings.airplaneCompany = airplaneCompany;
+    }
+
+    changeSettingsAirplaneModel(airplaneModel:string) {
+        this.dataSettings.airplaneModel = airplaneModel;
+    }
+
     notifyDataSettingsSubscribers() {
         this.dataSettingsSource.next(this.dataSettings);
     }
