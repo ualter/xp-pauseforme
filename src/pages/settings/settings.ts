@@ -4,6 +4,8 @@ import { DataService } from '../../app/services/DataService';
 import { Nav, Platform } from 'ionic-angular';
 import { AirplanesPage } from '../airplanes/airplanes';
 import { Utils } from '../../app/services/Utils';
+import { AirplaneServices } from '../../app/services/AirplaneServices';
+import { Airplane } from '../../app/services/Airplane';
 
 @Component({
   selector: 'page-settings',
@@ -14,70 +16,64 @@ export class SettingsPage {
   xplaneAddress: string   = "localhost";
   xplanePort: string      = "9002";
   name: string            = "UALTER Desktop";
-  airplaneCompany: string = ""; 
-  airplaneModel: string   = "";
-  airPlaneIcon: string    = "";
-  airPlaneName: string    = "";
+  airplane: Airplane;
+  airplaneId: string;
 
   constructor(
     public navCtrl: NavController, 
     public navParams: NavParams,
     public dataService: DataService, 
+    public airplaneService: AirplaneServices,
     public utils: Utils) {
 
-    this.dataService.currentDataSettings.subscribe(dataSettings => {
-      this.xplaneAddress = dataSettings.xplaneAddress;
-      this.xplanePort = dataSettings.xplanePort;
-      this.name = dataSettings.name; 
-      this.airplaneCompany = dataSettings.airplaneCompany;
-      this.airplaneModel = dataSettings.airplaneModel;
+    this.dataService.currentSettings.subscribe(settings => {
+      this.xplaneAddress   = settings.xplaneAddress;
+      this.xplanePort      = settings.xplanePort;
+      this.name            = settings.name; 
+      this.airplane        = this.airplaneService.getAirplane(settings.airplaneId);
+      this.airplaneId      = this.airplane.id;
     });
 
-    //this.airPlaneIcon = this.utils.PATH_IMG_AIRPLANES + this.airplaneCompany + "/airplane-" + this.airplaneModel + ".png";
+    if ( !this.airplane ) {
+      this.airplane = this.airplaneService.getAirplane("a320");
+    }
   }
 
   ionViewDidLoad() {
   }
 
   ionViewWillEnter() {
-    this.airPlaneIcon = this.utils.PATH_IMG_AIRPLANES + this.dataService.dataSettings.airplaneCompany + "/airplane-" + this.dataService.dataSettings.airplaneModel + ".png";
-    let comp = this.dataService.dataSettings.airplaneCompany;
-    if ( comp == "generics" ) {
-      comp = "";
-    }
-    this.airPlaneName = comp + " " + this.dataService.dataSettings.airplaneModel;
+    this.airplane = this.airplaneService.getAirplane(this.dataService.settings.airplaneId);
   }
 
   saveSettings() {
     var notify: boolean = false;
 
-    if ( this.xplaneAddress != this.dataService.dataSettings.xplaneAddress ) {
+    if ( this.xplaneAddress != this.dataService.settings.xplaneAddress ) {
       this.dataService.changeSettingsXplaneAddress(this.xplaneAddress);
       notify = true;
     }
-    if ( this.xplanePort != this.dataService.dataSettings.xplanePort ) {
+    if ( this.xplanePort != this.dataService.settings.xplanePort ) {
       this.dataService.changeSettingsXplanePort(this.xplanePort);
       notify = true;
     }
-    if ( this.name != this.dataService.dataSettings.name ) {
+    if ( this.name != this.dataService.settings.name ) {
       this.dataService.changeSettingsName(this.name);
       notify = true;
     }
-    if ( this.airplaneCompany != this.dataService.dataSettings.airplaneCompany || this.airplaneModel != this.dataService.dataSettings.airplaneModel ) {
+
+    if ( this.airplaneId != this.dataService.settings.airplaneId ) {
       notify = true;
     }
     
     if (notify) {
-      this.dataService.saveDataSettings();
-      this.dataService.notifyDataSettingsSubscribers();
+      this.dataService.saveSettings();
+      this.dataService.notifyChangeSettingsToSubscribers();
     }
   }
 
   openAirplanesPage() {
-    this.navCtrl.push(AirplanesPage, {
-      firstPassed: "value 1",
-      secondPassed: "value 2"
-    });
+    this.navCtrl.push(AirplanesPage);
   }
 
 }

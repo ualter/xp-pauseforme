@@ -25,6 +25,7 @@ import { XpWebSocketService } from '../../app/services/Xp.web.socket.service';
 import { LiteralMapEntry } from '@angular/compiler/src/output/output_ast';
 import { Router } from '../../app/services/Router';
 import { FlightPlan } from '../../app/services/FlightPlan';
+import { AirplaneServices } from '../../app/services/AirplaneServices';
 
 const MAX_ZOOM                    = 15;
 const ZOOM_PAN_OPTIONS            = {animate: true, duration: 0.25, easeLinearity: 1.0, noMoveStart: false}; /*{animate: true, duration: 3.5, easeLinearity: 1.0, noMoveStart: false}*/
@@ -183,6 +184,7 @@ export class MapPage {
   
   constructor(
     public dataService: DataService,
+    public airplaneServices: AirplaneServices,
     public navCtrl: NavController, 
     public navParams: NavParams, 
     public geolocation: Geolocation,
@@ -198,15 +200,22 @@ export class MapPage {
     staticAlertController = alertCtrl;
     MapPage.myself = this;
 
-    this.dataService.currentDataSettings.subscribe(dataSettings => {
-      this.xplaneAddress = dataSettings.xplaneAddress;
-      this.xplanePort = dataSettings.xplanePort;
-      identificationName = dataSettings.name; 
+    this.dataService.currentSettings.subscribe(settings => {
+      this.xplaneAddress = settings.xplaneAddress;
+      this.xplanePort    = settings.xplanePort;
+      identificationName = settings.name; 
 
       if ( this.xplanePort ) {
         wsURL = "ws://" + this.xplaneAddress + ":" + this.xplanePort + "/";
       } else {
         wsURL = "ws://" + this.xplaneAddress + "/";
+      }
+
+      let airplane = this.airplaneServices.getAirplane(settings.airplaneId);
+      AIRPLANE_ICON.options.iconUrl   = airplane.icon;
+      AIRPLANE_ICON.options.shadowUrl = airplane.icon_shadow;
+      if ( airplaneMarker )  {
+        airplaneMarker.setIcon(AIRPLANE_ICON);
       }
     });
   }

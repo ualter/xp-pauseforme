@@ -52,8 +52,8 @@
             Maps Config
         </ion-list-header>
         <button ion-item (click)="openAirplanesPage()" icon-start>
-            {{airPlaneName | uppercase}}
-            <ion-thumbnail item-start class="ion-thumbnailSize"><img [src]="airPlaneIcon" class="imgThumbnailSize" style="width:35px;height:35px;"></ion-thumbnail>
+            {{airplane.name}}
+            <ion-thumbnail item-start class="ion-thumbnailSize"><img [src]="airplane.icon" class="imgThumbnailSize" style="width:35px;height:35px;"></ion-thumbnail>
         </button>
     </ion-list>
 

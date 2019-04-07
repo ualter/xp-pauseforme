@@ -14,10 +14,11 @@ import { XpWebSocketService } from './services/Xp.web.socket.service';
 import { Utils } from './services/Utils';
 import { Aviation } from './services/Aviation';
 import { DataService } from './services/DataService';
-import { DataSettings } from './services/DataSettings';
+import { Settings } from './services/Settings';
 import { Router } from './services/Router';
 import { FlightPlan } from './services/FlightPlan';
 import { AirplanesPage } from '../pages/airplanes/airplanes';
+import { AirplaneServices } from './services/AirplaneServices';
 
 @NgModule({
   declarations: [
@@ -49,9 +50,10 @@ import { AirplanesPage } from '../pages/airplanes/airplanes';
     Utils,
     Aviation,
     DataService,
-    DataSettings,
+    Settings,
     Router,
     FlightPlan,
+    AirplaneServices,
     {provide: ErrorHandler, useClass: IonicErrorHandler}
   ]
 })

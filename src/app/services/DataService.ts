@@ -1,62 +1,59 @@
 import { Injectable } from "@angular/core";
 import { BehaviorSubject, Observable } from "rxjs";
-import { DataSettings } from './DataSettings'
+import { Settings } from './Settings'
 import { Storage } from '@ionic/storage';
 import { Utils } from "./Utils";
 
 @Injectable()
 export class DataService {
 
-    private dataSettingsSource: BehaviorSubject<DataSettings>;
-    dataSettings: DataSettings;
-    currentDataSettings: Observable<DataSettings>
+    private settingsSource: BehaviorSubject<Settings>;
+    settings: Settings;
+    currentSettings: Observable<Settings>
 
     constructor(private storage: Storage, private utils: Utils) {
 
-        this.dataSettings = new DataSettings();
-        this.dataSettings.xplaneAddress = "127.0.0.1";
-        this.dataSettings.xplanePort = "9002";
-        this.dataSettings.name = "UALTER Desktop";
+        this.settings                 = new Settings();
+        this.settings.xplaneAddress   = "127.0.0.1";
+        this.settings.xplanePort      = "9002";
+        this.settings.name            = "UALTER Desktop";
+        this.settings.airplaneId      = "a320";
 
-        this.dataSettingsSource = new BehaviorSubject<DataSettings>(this.dataSettings);
-        this.currentDataSettings = this.dataSettingsSource.asObservable();
+        this.settingsSource = new BehaviorSubject<Settings>(this.settings);
+        this.currentSettings = this.settingsSource.asObservable();
 
         // Asynchronously check database if there is already an object saved before, if found... notify the subscribers again with the new value
-        this.storage.get('dataSettings').then((vlr) => {
+        this.storage.get('settings').then((vlr) => {
             if (vlr) {
-                this.utils.trace("Load data from LocalStorage:" + vlr);                
-                this.dataSettings = JSON.parse(vlr);
-                this.dataSettingsSource.next(this.dataSettings);
+                this.utils.trace("Load settings data from LocalStorage:" + vlr);                
+                this.settings = JSON.parse(vlr);
+                this.settingsSource.next(this.settings);
             }
         });
     }
 
     changeSettingsXplaneAddress(xplaneAddress:string) {
-        this.dataSettings.xplaneAddress = xplaneAddress;
+        this.settings.xplaneAddress = xplaneAddress;
     }
 
     changeSettingsXplanePort(xplanePort:string) {
-        this.dataSettings.xplanePort = xplanePort;
+        this.settings.xplanePort = xplanePort;
     }
 
     changeSettingsName(name:string) {
-        this.dataSettings.name = name;
+        this.settings.name = name;
     }
 
-    changeSettingsAirplaneCompany(airplaneCompany:string) {
-        this.dataSettings.airplaneCompany = airplaneCompany;
+    changeSettingsAirplane(airplaneId:string) {
+        this.settings.airplaneId = airplaneId;
     }
 
-    changeSettingsAirplaneModel(airplaneModel:string) {
-        this.dataSettings.airplaneModel = airplaneModel;
+    notifyChangeSettingsToSubscribers() {
+        this.settingsSource.next(this.settings);
     }
 
-    notifyDataSettingsSubscribers() {
-        this.dataSettingsSource.next(this.dataSettings);
-    }
-
-    saveDataSettings() {
-        this.storage.set('dataSettings',JSON.stringify(this.dataSettings));
+    saveSettings() {
+        this.storage.set('settings',JSON.stringify(this.settings));
     }
 }
 

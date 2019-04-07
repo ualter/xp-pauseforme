@@ -7,7 +7,7 @@ export enum LogLevel {
     WARN,
     ERROR,
     OFF
-  }
+}
 
 @Injectable()
 export class Utils {
