@@ -26,6 +26,8 @@ import { LiteralMapEntry } from '@angular/compiler/src/output/output_ast';
 import { Router } from '../../app/services/Router';
 import { FlightPlan } from '../../app/services/FlightPlan';
 import { AirplaneServices } from '../../app/services/AirplaneServices';
+import { TestScheduler } from 'rxjs';
+import { directive } from '@angular/core/src/render3/instructions';
 
 const MAX_ZOOM                    = 15;
 const ZOOM_PAN_OPTIONS            = {animate: true, duration: 0.25, easeLinearity: 1.0, noMoveStart: false}; /*{animate: true, duration: 3.5, easeLinearity: 1.0, noMoveStart: false}*/
@@ -1163,6 +1165,17 @@ export class MapPage {
       </table>
     `;
 
+    
+    var container = leaflet.DomUtil.create('div');
+    var btn = leaflet.DomUtil.create('button', '', container);
+    btn.setAttribute('type', 'button');
+    btn.innerHTML = "Click";
+    leaflet.DomEvent.on(btn, 'click', () => {
+      alert("toto");
+    });
+    html = html + container.innerHTML;
+    
+
     //<tr>
       //  <td>
       //    <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Autopilot.......:</span>
@@ -1176,7 +1189,13 @@ export class MapPage {
     return html;
   }
 
+  static test() {
+    MapPage.sendMessageToXPlane("{PAUSE}", "jfdkls");
+  }
+
 }
+
+
 
 /*
 {
