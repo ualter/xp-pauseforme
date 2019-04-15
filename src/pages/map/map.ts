@@ -528,10 +528,10 @@ export class MapPage {
       MapPage.sendMessageToXPlane("FJKDSL","YO");
     });
 
-    choicePopUp
+    /*choicePopUp
       .setLatLng(e.latlng)
       .setContent(containerBtn)
-      .openOn(map);
+      .openOn(map);*/
   }
 
   zoomListener() {

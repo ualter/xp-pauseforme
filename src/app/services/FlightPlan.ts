@@ -175,7 +175,7 @@ export class FlightPlan {
 
           this.flightPlanObservable = new Subject<any>();
           this.flightPlanObservable.asObservable().subscribe(message => {
-            this.updateMarkerPopUps(message);
+            this.createMarkerPopUps(message);
           });
     }        
 
@@ -368,7 +368,30 @@ export class FlightPlan {
       
     }
 
-    updateMarkerPopUps(event?) {
+    updateMarkerPopUps() {
+      for(var m in this.flightPlanWaypoints) {
+        let waypoint  = this.flightPlanWaypoints[m];
+        let navaid    = waypoint.navaid;
+
+        // Update Distance from Airplane
+        let idSpan    = "distance" + navaid.id;
+        let spanObj   = document.getElementById(idSpan);
+        if ( spanObj ) {
+          let distance;
+          if ( this.airplaneData ) {
+              let distFrom = new leaflet.latLng(this.airplaneData.lat, this.airplaneData.lng);
+              let distTo   = new leaflet.latLng(navaid.latitude, navaid.longitude);
+              distance     = distFrom.distanceTo(distTo) * 0.000539957; // Convert meters to nautical miles
+              distance     = this.utils.formatNumber(Math.round(distance)); 
+          } else {
+              distance = 9999;
+          }
+          spanObj.innerHTML = distance;
+        }      
+      }
+    }
+
+    createMarkerPopUps(event?) {
       for(var m in this.flightPlanWaypoints) {
         let waypoint  = this.flightPlanWaypoints[m];
         let htmlPopup = this.createPopUp(waypoint.navaid);
@@ -541,10 +564,10 @@ export class FlightPlan {
     }
 
     createPopUp(navaid) {
-        let paddingValue  = 3;
-        let fontSizeLabel = 12;
-        let fontSizeValue = 12;
-        let fontSizeUnit  = 11;
+        let paddingValue   = 3;
+        let fontSizeLabel  = 12;
+        let fontSizeValue  = 12;
+        let fontSizeUnit   = 11;
 
         let distance;
         if ( this.airplaneData ) {
@@ -585,7 +608,7 @@ export class FlightPlan {
               <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Distance.:</span>
             </td>
             <td align="right" style="padding-right:` + paddingValue + `px;">
-              <span style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + distance + `</span>
+              <span id="distance` + navaid.id + `" style="font-size:` + fontSizeValue + `px;color:blue;font-weight:bold;">` + distance + `</span>
             </td>
             <td>
               <span style="color:black;font-weight:bold;font-size:` + fontSizeUnit +`px;">nm</span>
@@ -638,14 +661,14 @@ export class FlightPlan {
 
 
       private createButtonPauseHere(navaid) {
-        var pauseAscii = '&#9612;&#9612;';
-        var separator  = leaflet.DomUtil.create('hr');
-        var containerBtn = leaflet.DomUtil.create('div');
-        var tableBtn = leaflet.DomUtil.create('table');
-        var tableBtnTr1 = leaflet.DomUtil.create('tr');
+        var pauseAscii             = '&#9612;&#9612;';
+        var separator              = leaflet.DomUtil.create('hr');
+        var containerBtn           = leaflet.DomUtil.create('div');
+        var tableBtn               = leaflet.DomUtil.create('table');
+        var tableBtnTr1            = leaflet.DomUtil.create('tr');
         var tableBtnTdBtnBtnLessNm = leaflet.DomUtil.create('td');
         var tableBtnTdBtnBtnMoreNm = leaflet.DomUtil.create('td');
-        var tableBtnTdBtnPause = leaflet.DomUtil.create('td');
+        var tableBtnTdBtnPause     = leaflet.DomUtil.create('td');
     
         separator.setAttribute("style","line-height:5px;");
         tableBtn.setAttribute("width", "100%");
@@ -655,20 +678,25 @@ export class FlightPlan {
     
         var btnLessNm = leaflet.DomUtil.create('button', '', containerBtn);
         btnLessNm.setAttribute('type', 'button');
-        btnLessNm.setAttribute('class', 'buttonPopup');
+        btnLessNm.setAttribute('class', 'buttonPopup buttonPopupMoreLess');
         btnLessNm.innerHTML = ' - ';
 
         var btnMoreNm = leaflet.DomUtil.create('button', '', containerBtn);
         btnMoreNm.setAttribute('type', 'button');
-        btnMoreNm.setAttribute('class', 'buttonPopup');
+        btnMoreNm.setAttribute('class', 'buttonPopup buttonPopupMoreLess');
         btnMoreNm.innerHTML = ' + ';
+
+        var initDist = 5;
+        if ( document.getElementById('btnPause' + navaid.id) ) {
+          initDist = Number.parseInt(document.getElementById('btnPause' + navaid.id).getAttribute('nm'));
+        }
 
         var btnPauseHere = leaflet.DomUtil.create('button', '', containerBtn);
         btnPauseHere.setAttribute('type', 'button');
         btnPauseHere.setAttribute('class', 'buttonPopup');
         btnPauseHere.setAttribute('id','btnPause' + navaid.id);
-        btnPauseHere.setAttribute('nm','5');
-        btnPauseHere.innerHTML = pauseAscii + ' 5nm ' + navaid.id;
+        btnPauseHere.setAttribute('nm',''+initDist);
+        btnPauseHere.innerHTML = pauseAscii + ' ' + initDist+'nm';
     
         tableBtnTdBtnBtnLessNm.appendChild(btnLessNm);
         tableBtnTdBtnBtnMoreNm.appendChild(btnMoreNm);
@@ -686,7 +714,7 @@ export class FlightPlan {
           if ( Number.parseInt(dist) > 5 ) {
             var newDist = Number.parseInt(dist) - 5;
             buttonPause.setAttribute('nm','' + newDist);
-            buttonPause.innerHTML = pauseAscii + ' ' + newDist + 'nm ' + navaid.id;
+            buttonPause.innerHTML = pauseAscii + ' ' + newDist + 'nm ';
           }
           e.stopPropagation();
         });
@@ -697,7 +725,7 @@ export class FlightPlan {
           if ( Number.parseInt(dist) < 995 ) {
             var newDist = 5 + Number.parseInt(dist);
             buttonPause.setAttribute('nm','' + newDist);
-            buttonPause.innerHTML = pauseAscii + ' ' + newDist + 'nm ' + navaid.id;
+            buttonPause.innerHTML = pauseAscii + ' ' + newDist + 'nm ';
           }
           e.stopPropagation();
         });
@@ -708,7 +736,7 @@ export class FlightPlan {
           console.log(navaid);
           var buttonPause = document.getElementById('btnPause' + navaid.id);
           var dist = buttonPause.getAttribute('nm');
-          MapPage.sendMessageToXPlane("{PAUSE}", "Yo");
+          MapPage.sendMessageToXPlane("{PAUSE}", "Yo " + dist);
         });
         return containerBtn;
       }
