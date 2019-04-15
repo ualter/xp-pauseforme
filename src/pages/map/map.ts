@@ -509,6 +509,29 @@ export class MapPage {
     map.on('zoomend', this.zoomListener);
     this.router.setMap(map);
     this.flightPlan.setMap(map);
+
+    map.on('click',(e: any) => {
+      this.defineWayPointOnClick(e);
+    });
+  }
+
+  defineWayPointOnClick(e: any) {
+    var choicePopUp = leaflet.popup();
+    var containerBtn = leaflet.DomUtil.create('div');
+    var btn2 = leaflet.DomUtil.create('button', '', containerBtn);
+    btn2.setAttribute('type', 'button');
+    btn2.innerHTML = 'ClickMe!';
+    containerBtn.innerHTML = 'You are at:'+ e.latlng.toString() + '<br>';
+    containerBtn.appendChild(btn2);
+
+    leaflet.DomEvent.on(btn2,'click', () => {
+      MapPage.sendMessageToXPlane("FJKDSL","YO");
+    });
+
+    choicePopUp
+      .setLatLng(e.latlng)
+      .setContent(containerBtn)
+      .openOn(map);
   }
 
   zoomListener() {
@@ -621,7 +644,7 @@ export class MapPage {
           icon.style.height = '30px';
           container.appendChild(icon);
           
-          container.onclick = function() {
+          container.onclick = function(e: any) {
             // If FollowAirplane is ON, we turn it off
             followAirplane = false;
             buttonFollowAirplane.style.color = "rgba(47, 79, 79, 0.8)";
@@ -637,6 +660,7 @@ export class MapPage {
             }
             map.flyTo({lon: userLongitude, lat: userLatitude}, MAX_ZOOM - 4, ZOOM_PAN_OPTIONS);
             container.style.color = "rgba(47, 79, 79, 0.8)";
+            e.stopPropagation();
           }
           buttonGoToLocation = container;
           return container;
@@ -662,7 +686,7 @@ export class MapPage {
           icon.style.transform = 'rotate(315deg)';
           container.appendChild(icon);
           
-          container.onclick = function() {
+          container.onclick = function(e: any) {
             followAirplane = !followAirplane;
             if ( followAirplane ) {
               container.style.color = "rgba(0, 0, 0, 0.8)";
@@ -678,6 +702,7 @@ export class MapPage {
             } else {
               container.style.color = "rgba(47, 79, 79, 0.8)";
             }
+            e.stopPropagation();
           }
           buttonFollowAirplane = container;
           return container;
@@ -707,7 +732,7 @@ export class MapPage {
           iconPlay.style.height    = '40px';
           iconPlay.style.margin    = "0px 0px 0px 4px";
           
-          container.onclick = function() {
+          container.onclick = function(e: any) {
             if ( MapPage.getWSState() == WS_OPEN ) {
               MapPage.myself.visibilityWaiting = "shown"; 
               gamePaused = !gamePaused;
@@ -722,6 +747,7 @@ export class MapPage {
               }
             }
             MapPage.sendMessageToXPlane("{PAUSE}", identificationName);
+            e.stopPropagation();
           }
 
           container.addEventListener("PAUSED", function(){
@@ -760,7 +786,7 @@ export class MapPage {
           iconDisconnect.style.margin    = "0px 0px 0px 2px";
           container.appendChild(iconDisconnect);
 
-          container.onclick = function() {
+          container.onclick = function(e: any) {
             let alert = staticAlertController.create({
             title: 'Warning',
             message: `
@@ -782,6 +808,7 @@ export class MapPage {
             ]
             });
             alert.present();
+            e.stopPropagation();
           }
           
           buttonDisconnect = container;
@@ -807,8 +834,9 @@ export class MapPage {
             },
             {
               text: 'Connect Me Now',
-              handler: () => {
+              handler: (e: any) => {
                 MapPage.myself.switchConnectMeState();
+                e.stopPropagation();
               }
             }
           ]
@@ -966,6 +994,7 @@ export class MapPage {
   }
   
   updateConnectMeState(event) {
+    console.log(event);
     this.utils.trace("Connect Me State change to:" + event);
     if (event == true) {
       this.visibilityContacting = "shown"; 
@@ -974,6 +1003,9 @@ export class MapPage {
     } else {
       this.stopAttemptingToConnect();
     }
+  }
+  stopPropagate(event: any) {
+    event.stopPropagation();
   }
 
   activateThreadConnection() {
@@ -1012,10 +1044,11 @@ export class MapPage {
         },
         {
           text: 'Keep trying',
-          handler: () => {
+          handler: (e: any) => {
             attempingConnectTimes = 0;
             this.connect();
             this.activateThreadConnection();
+            e.stopPropagation();
           }
         }
       ]
@@ -1163,20 +1196,8 @@ export class MapPage {
       </tr>
       `+ destinationCell + `
       </table>
-    `;
-
-    
-    var container = leaflet.DomUtil.create('div');
-    var btn = leaflet.DomUtil.create('button', '', container);
-    btn.setAttribute('type', 'button');
-    btn.innerHTML = "Click";
-    leaflet.DomEvent.on(btn, 'click', () => {
-      alert("toto");
-    });
-    html = html + container.innerHTML;
-    
-
-    //<tr>
+      `;
+      //<tr>
       //  <td>
       //    <span style="font-size:` + fontSizeLabel + `px;font-family:Consolas">Autopilot.......:</span>
       //  </td>
@@ -1186,13 +1207,12 @@ export class MapPage {
       //  <td>
       //  </td>
       //</tr>
-    return html;
-  }
 
-  static test() {
-    MapPage.sendMessageToXPlane("{PAUSE}", "jfdkls");
+      var container = leaflet.DomUtil.create('div');
+      container.innerHTML = html;
+      return container;
+      //return html;
   }
-
 }
 
 

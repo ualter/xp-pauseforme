@@ -24,7 +24,7 @@
     </div>
     <ion-item  id="buttonConnect" [@visibilityButtonConnectMe]="visibilityButtonConnectMe"  >
       <ion-label>Connect Me</ion-label>
-      <ion-toggle [(ngModel)]="connectMeState" (ngModelChange)="updateConnectMeState($event)" [disabled]="connectMeDisable"></ion-toggle>
+      <ion-toggle [(ngModel)]="connectMeState" (ngModelChange)="updateConnectMeState($event)" (click)="stopPropagate($event)" [disabled]="connectMeDisable"></ion-toggle>
     </ion-item>
     <div id="messageBar" [@visibilityMessageBar]="visibilityMessageBar" [@colorChanged]="messageBarColor">
       <div id="messageBarText">

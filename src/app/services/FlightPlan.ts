@@ -3,6 +3,7 @@ import { Utils } from "./Utils";
 import { Aviation } from './Aviation';
 import leaflet from 'leaflet';
 import { Observable, Subject } from 'rxjs'; 
+import { MapPage } from '../../pages/map/map'
 
 var map;
 var flightPlanPaths = [];
@@ -625,7 +626,91 @@ export class FlightPlan {
           </tr>
           </table>
         `;
-        return html;
+
+        var containerBtn = this.createButtonPauseHere(navaid);
+
+        var container = leaflet.DomUtil.create('div');
+        container.innerHTML = html;
+        container.appendChild(containerBtn);
+        return container;
+        //return html;
+      }
+
+
+      private createButtonPauseHere(navaid) {
+        var pauseAscii = '&#9612;&#9612;';
+        var separator  = leaflet.DomUtil.create('hr');
+        var containerBtn = leaflet.DomUtil.create('div');
+        var tableBtn = leaflet.DomUtil.create('table');
+        var tableBtnTr1 = leaflet.DomUtil.create('tr');
+        var tableBtnTdBtnBtnLessNm = leaflet.DomUtil.create('td');
+        var tableBtnTdBtnBtnMoreNm = leaflet.DomUtil.create('td');
+        var tableBtnTdBtnPause = leaflet.DomUtil.create('td');
+    
+        separator.setAttribute("style","line-height:5px;");
+        tableBtn.setAttribute("width", "100%");
+        tableBtnTdBtnBtnLessNm.setAttribute("align", "right");
+        tableBtnTdBtnBtnMoreNm.setAttribute("align", "left");
+        tableBtnTdBtnPause.setAttribute("align", "center");
+    
+        var btnLessNm = leaflet.DomUtil.create('button', '', containerBtn);
+        btnLessNm.setAttribute('type', 'button');
+        btnLessNm.setAttribute('class', 'buttonPopup');
+        btnLessNm.innerHTML = ' - ';
+
+        var btnMoreNm = leaflet.DomUtil.create('button', '', containerBtn);
+        btnMoreNm.setAttribute('type', 'button');
+        btnMoreNm.setAttribute('class', 'buttonPopup');
+        btnMoreNm.innerHTML = ' + ';
+
+        var btnPauseHere = leaflet.DomUtil.create('button', '', containerBtn);
+        btnPauseHere.setAttribute('type', 'button');
+        btnPauseHere.setAttribute('class', 'buttonPopup');
+        btnPauseHere.setAttribute('id','btnPause' + navaid.id);
+        btnPauseHere.setAttribute('nm','5');
+        btnPauseHere.innerHTML = pauseAscii + ' 5nm ' + navaid.id;
+    
+        tableBtnTdBtnBtnLessNm.appendChild(btnLessNm);
+        tableBtnTdBtnBtnMoreNm.appendChild(btnMoreNm);
+        tableBtnTdBtnPause.appendChild(btnPauseHere);
+        tableBtnTr1.appendChild(tableBtnTdBtnBtnLessNm);
+        tableBtnTr1.appendChild(tableBtnTdBtnPause);
+        tableBtnTr1.appendChild(tableBtnTdBtnBtnMoreNm);
+        tableBtn.appendChild(tableBtnTr1);
+        containerBtn.appendChild(separator);
+        containerBtn.appendChild(tableBtn);
+    
+        leaflet.DomEvent.on(btnLessNm, 'click', (e: any) => {
+          var buttonPause = document.getElementById('btnPause' + navaid.id);
+          var dist = buttonPause.getAttribute('nm');
+          if ( Number.parseInt(dist) > 5 ) {
+            var newDist = Number.parseInt(dist) - 5;
+            buttonPause.setAttribute('nm','' + newDist);
+            buttonPause.innerHTML = pauseAscii + ' ' + newDist + 'nm ' + navaid.id;
+          }
+          e.stopPropagation();
+        });
+
+        leaflet.DomEvent.on(btnMoreNm, 'click', (e: any) => {
+          var buttonPause = document.getElementById('btnPause' + navaid.id);
+          var dist = buttonPause.getAttribute('nm');
+          if ( Number.parseInt(dist) < 995 ) {
+            var newDist = 5 + Number.parseInt(dist);
+            buttonPause.setAttribute('nm','' + newDist);
+            buttonPause.innerHTML = pauseAscii + ' ' + newDist + 'nm ' + navaid.id;
+          }
+          e.stopPropagation();
+        });
+
+        leaflet.DomEvent.on(btnPauseHere, 'click', (e: any) => {
+          e.stopPropagation();
+
+          console.log(navaid);
+          var buttonPause = document.getElementById('btnPause' + navaid.id);
+          var dist = buttonPause.getAttribute('nm');
+          MapPage.sendMessageToXPlane("{PAUSE}", "Yo");
+        });
+        return containerBtn;
       }
 
 }
