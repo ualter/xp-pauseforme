@@ -19,8 +19,6 @@ import { Router } from './services/Router';
 import { FlightPlan } from './services/FlightPlan';
 import { AirplanesPage } from '../pages/airplanes/airplanes';
 import { AirplaneServices } from './services/AirplaneServices';
-import { LocalNotifications } from '@ionic-native/local-notifications/ngx';
-
 
 @NgModule({
   declarations: [
@@ -56,7 +54,6 @@ import { LocalNotifications } from '@ionic-native/local-notifications/ngx';
     Router,
     FlightPlan,
     AirplaneServices,
-    LocalNotifications,
     {provide: ErrorHandler, useClass: IonicErrorHandler}
   ]
 })

@@ -28,7 +28,6 @@ import { FlightPlan } from '../../app/services/FlightPlan';
 import { AirplaneServices, AirplaneCategorySize } from '../../app/services/AirplaneServices';
 import { TestScheduler } from 'rxjs';
 import { directive } from '@angular/core/src/render3/instructions';
-import { LocalNotifications } from '@ionic-native/local-notifications/ngx';
 
 const MAX_ZOOM          = 15;
 const ZOOM_PAN_OPTIONS  = {animate: true, duration: 0.25, easeLinearity: 1.0, noMoveStart: false}; 
@@ -185,8 +184,7 @@ export class MapPage {
     public utils: Utils,
     public aviation: Aviation,
     public router: Router,
-    public flightPlan: FlightPlan,
-    public localNotifications: LocalNotifications) {
+    public flightPlan: FlightPlan) {
 
     staticXPlaneWsServer  = xpWsSocket;
     staticAlertController = alertCtrl;

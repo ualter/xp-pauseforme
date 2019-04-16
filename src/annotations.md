@@ -9,6 +9,7 @@ $ npm install @ionic-native/geolocation --save
 $ ionic cordova run android --prod
 
 # Run iOS Emulator
+$ ionic cordova build ios -- --buildFlag="-UseModernBuildSystem=0"
 $ ionic cordova run ios -l -- --buildFlag="-UseModernBuildSystem=0"
 $ ionic cordova emulate ios -- --buildFlag="-UseModernBuildSystem=0"
 $ cordova run ios --debug --target "iPhone-8" --buildFlag='-UseModernBuildSystem=0'
