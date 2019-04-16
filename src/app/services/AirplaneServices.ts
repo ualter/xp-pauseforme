@@ -173,7 +173,7 @@ export class AirplaneServices {
         this.airplanes.set(airplane.id,airplane);
 
         airplane                      = new Airplane("a380");
-        airplane.name                 = "A350";
+        airplane.name                 = "A380";
         airplane.airliner             = Airliner.AIRBUS;
         airplane.categorySize         = AirplaneCategorySize.BIGGER;
         airplane.icon                 = this.utils.PATH_IMG_AIRPLANES + Airliner.AIRBUS + "/airplane-" + airplane.id + ".png";

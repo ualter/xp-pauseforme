@@ -6,6 +6,7 @@ import { Observable, Subject } from 'rxjs';
 import { MapPage } from '../../pages/map/map'
 
 var map;
+var identification;
 var flightPlanPaths = [];
 var flightPlanMarkersAirportGroup1;
 var flightPlanMarkersAirportGroup2;
@@ -179,8 +180,9 @@ export class FlightPlan {
           });
     }        
 
-    setMap(_map) {
+    setMap(_map, _identification) {
         map = _map;
+        identification = _identification;
     }
 
     showFlightPlan(flightPlan, _airplaneData){
@@ -365,7 +367,7 @@ export class FlightPlan {
         this.airplaneLastLat = this.airplaneData.lat;
         this.airplaneLastLng = this.airplaneData.lng;
       }
-      
+      console.log(this.airplaneData.pauseforme)
     }
 
     updateMarkerPopUps() {
@@ -474,7 +476,6 @@ export class FlightPlan {
           map.addLayer(flightPlanMarkersAirportGroup2);
           map.removeLayer(flightPlanMarkersAirportGroup1);
         }
-        console.log( "Zoom..:" + map.getZoom() + ", Size..:" + size);
         this.utils.trace("Zoom..:" + map.getZoom() + ", Size..:" + size);
       }
     }
@@ -659,7 +660,6 @@ export class FlightPlan {
         //return html;
       }
 
-
       private createButtonPauseHere(navaid) {
         var pauseAscii             = '&#9612;&#9612;';
         var separator              = leaflet.DomUtil.create('hr');
@@ -669,6 +669,7 @@ export class FlightPlan {
         var tableBtnTdBtnBtnLessNm = leaflet.DomUtil.create('td');
         var tableBtnTdBtnBtnMoreNm = leaflet.DomUtil.create('td');
         var tableBtnTdBtnPause     = leaflet.DomUtil.create('td');
+        var buttonPauseName        = 'btnPause' + navaid.id;
     
         separator.setAttribute("style","line-height:5px;");
         tableBtn.setAttribute("width", "100%");
@@ -679,24 +680,24 @@ export class FlightPlan {
         var btnLessNm = leaflet.DomUtil.create('button', '', containerBtn);
         btnLessNm.setAttribute('type', 'button');
         btnLessNm.setAttribute('class', 'buttonPopup buttonPopupMoreLess');
-        btnLessNm.innerHTML = ' - ';
+        btnLessNm.innerHTML = ' &#8722; ';
 
         var btnMoreNm = leaflet.DomUtil.create('button', '', containerBtn);
         btnMoreNm.setAttribute('type', 'button');
         btnMoreNm.setAttribute('class', 'buttonPopup buttonPopupMoreLess');
-        btnMoreNm.innerHTML = ' + ';
+        btnMoreNm.innerHTML = ' &#43; ';
 
-        var initDist = 5;
-        if ( document.getElementById('btnPause' + navaid.id) ) {
-          initDist = Number.parseInt(document.getElementById('btnPause' + navaid.id).getAttribute('nm'));
+        var initDist = 10;
+        if ( document.getElementById(buttonPauseName) ) {
+          initDist = Number.parseInt(document.getElementById(buttonPauseName).getAttribute('nm'));
         }
 
         var btnPauseHere = leaflet.DomUtil.create('button', '', containerBtn);
         btnPauseHere.setAttribute('type', 'button');
         btnPauseHere.setAttribute('class', 'buttonPopup');
-        btnPauseHere.setAttribute('id','btnPause' + navaid.id);
+        btnPauseHere.setAttribute('id',buttonPauseName);
         btnPauseHere.setAttribute('nm',''+initDist);
-        btnPauseHere.innerHTML = pauseAscii + ' ' + initDist+'nm';
+        btnPauseHere.innerHTML = pauseAscii + ' ' + this.utils.pad(initDist, 3) +'nm';
     
         tableBtnTdBtnBtnLessNm.appendChild(btnLessNm);
         tableBtnTdBtnBtnMoreNm.appendChild(btnMoreNm);
@@ -709,24 +710,21 @@ export class FlightPlan {
         containerBtn.appendChild(tableBtn);
     
         leaflet.DomEvent.on(btnLessNm, 'click', (e: any) => {
-          var buttonPause = document.getElementById('btnPause' + navaid.id);
-          var dist = buttonPause.getAttribute('nm');
-          if ( Number.parseInt(dist) > 5 ) {
-            var newDist = Number.parseInt(dist) - 5;
-            buttonPause.setAttribute('nm','' + newDist);
-            buttonPause.innerHTML = pauseAscii + ' ' + newDist + 'nm ';
-          }
+          this.lessDistancePause(navaid, pauseAscii);
+          e.stopPropagation();
+        });
+        leaflet.DomEvent.on(btnLessNm, 'dblclick', (e: any) => {
+          this.lessDistancePause(navaid, pauseAscii, 35);
           e.stopPropagation();
         });
 
         leaflet.DomEvent.on(btnMoreNm, 'click', (e: any) => {
-          var buttonPause = document.getElementById('btnPause' + navaid.id);
-          var dist = buttonPause.getAttribute('nm');
-          if ( Number.parseInt(dist) < 995 ) {
-            var newDist = 5 + Number.parseInt(dist);
-            buttonPause.setAttribute('nm','' + newDist);
-            buttonPause.innerHTML = pauseAscii + ' ' + newDist + 'nm ';
-          }
+          this.moreDistancePause(navaid, pauseAscii);
+          e.stopPropagation();
+        });
+
+        leaflet.DomEvent.on(btnMoreNm, 'dblclick', (e: any) => {
+          this.moreDistancePause(navaid, pauseAscii, 35);
           e.stopPropagation();
         });
 
@@ -734,11 +732,40 @@ export class FlightPlan {
           e.stopPropagation();
 
           console.log(navaid);
-          var buttonPause = document.getElementById('btnPause' + navaid.id);
-          var dist = buttonPause.getAttribute('nm');
-          MapPage.sendMessageToXPlane("{PAUSE}", "Yo " + dist);
+          var buttonPause = document.getElementById(buttonPauseName);
+          var dist        = buttonPause.getAttribute('nm');
+          var msg         = "{PAUSE}|" + navaid.id + "|" + navaid.type + "|" + dist;
+          MapPage.sendMessageToXPlane(msg, identification);
         });
         return containerBtn;
       }
 
+
+  private moreDistancePause(navaid: any, pauseAscii: string, amount? : number) {
+    if ( !amount || amount == 0 ) {
+      amount = 5;
+    }
+    var buttonPause = document.getElementById('btnPause' + navaid.id);
+    var dist        = buttonPause.getAttribute('nm');
+    var newDist     = amount + Number.parseInt(dist);
+    if ( newDist > 995 ) {
+      newDist = 995;
+    }
+    buttonPause.setAttribute('nm', '' + newDist);
+    buttonPause.innerHTML = pauseAscii + ' ' + this.utils.pad(newDist, 3) + 'nm ';
+  }
+
+  private lessDistancePause(navaid: any, pauseAscii: string, amount? : number) {
+    if ( !amount || amount == 0 ) {
+      amount = 5;
+    }
+    var buttonPause = document.getElementById('btnPause' + navaid.id);
+    var dist        = buttonPause.getAttribute('nm');
+    var newDist     = Number.parseInt(dist) - amount;
+    if (newDist < 5) {
+      newDist = 5;
+    }
+    buttonPause.setAttribute('nm', '' + newDist);
+    buttonPause.innerHTML = pauseAscii + ' ' + this.utils.pad(newDist, 3) + 'nm ';
+  }
 }

@@ -25,12 +25,14 @@ import { XpWebSocketService } from '../../app/services/Xp.web.socket.service';
 import { LiteralMapEntry } from '@angular/compiler/src/output/output_ast';
 import { Router } from '../../app/services/Router';
 import { FlightPlan } from '../../app/services/FlightPlan';
-import { AirplaneServices } from '../../app/services/AirplaneServices';
+import { AirplaneServices, AirplaneCategorySize } from '../../app/services/AirplaneServices';
 import { TestScheduler } from 'rxjs';
 import { directive } from '@angular/core/src/render3/instructions';
+import { LocalNotifications } from '@ionic-native/local-notifications/ngx';
 
-const MAX_ZOOM                    = 15;
-const ZOOM_PAN_OPTIONS            = {animate: true, duration: 0.25, easeLinearity: 1.0, noMoveStart: false}; /*{animate: true, duration: 3.5, easeLinearity: 1.0, noMoveStart: false}*/
+const MAX_ZOOM          = 15;
+const ZOOM_PAN_OPTIONS  = {animate: true, duration: 0.25, easeLinearity: 1.0, noMoveStart: false}; 
+                        /*{animate: true, duration: 3.5, easeLinearity: 1.0, noMoveStart: false}*/
 
 const WS_CONNECTING = 0;
 const WS_OPEN       = 1;
@@ -96,10 +98,12 @@ enum State {
   PAUSED = 2,
 }
 
-const AIRPLANE_ICON_WIDTH         = 62;
-const AIRPLANE_ICON_HEIGHT        = 59;
-const AIRPLANE_ICON_ANCHOR_WIDTH  = AIRPLANE_ICON_WIDTH / 2;
-const AIRPLANE_ICON_ANCHOR_HEIGHT = AIRPLANE_ICON_HEIGHT - (AIRPLANE_ICON_HEIGHT - ((AIRPLANE_ICON_HEIGHT*60)/100));
+const DEFAULT_AIRPLANE_ICON_WIDTH  = 62;
+const DEFAULT_AIRPLANE_ICON_HEIGHT = 59;
+var   AIRPLANE_ICON_WIDTH          = DEFAULT_AIRPLANE_ICON_WIDTH;
+var   AIRPLANE_ICON_HEIGHT         = DEFAULT_AIRPLANE_ICON_HEIGHT;
+const AIRPLANE_ICON_ANCHOR_WIDTH   = AIRPLANE_ICON_WIDTH / 2;
+const AIRPLANE_ICON_ANCHOR_HEIGHT  = AIRPLANE_ICON_HEIGHT - (AIRPLANE_ICON_HEIGHT - ((AIRPLANE_ICON_HEIGHT*60)/100));
 
 var AIRPLANE_ICON = leaflet.icon({
   iconUrl:      'assets/imgs/airplane-a320.png',
@@ -109,21 +113,6 @@ var AIRPLANE_ICON = leaflet.icon({
   iconAnchor:   [AIRPLANE_ICON_ANCHOR_WIDTH, AIRPLANE_ICON_ANCHOR_HEIGHT],      // point of the icon which will correspond to marker's location
   shadowAnchor: [AIRPLANE_ICON_ANCHOR_WIDTH-5, AIRPLANE_ICON_ANCHOR_HEIGHT-4],  // the same for the shadow
   popupAnchor:  [0, (AIRPLANE_ICON_HEIGHT/2) * -1]                                                          // point from which the popup should open relative to the iconAnchor
-});
-
-const NDB_ICON_WIDTH         = 100;
-const NDB_ICON_HEIGHT        = 50;
-const NDB_ICON_ANCHOR_WIDTH  = NDB_ICON_WIDTH / 4;
-const NDB_ICON_ANCHOR_HEIGHT = NDB_ICON_WIDTH / 2;
-
-var NDB_ICON = leaflet.icon({
-  iconUrl:      'assets/imgs/icon_ndb.png',
-  shadowUrl:    'assets/imgs/icon_ndb_shadow.png',
-  iconSize:     [NDB_ICON_WIDTH,NDB_ICON_HEIGHT],
-  shadowSize:   [NDB_ICON_WIDTH,NDB_ICON_HEIGHT],
-  iconAnchor:   [NDB_ICON_ANCHOR_WIDTH,NDB_ICON_ANCHOR_HEIGHT],  // point of the icon which will correspond to marker's location
-  shadowAnchor: [NDB_ICON_ANCHOR_WIDTH,NDB_ICON_ANCHOR_HEIGHT],  // the same for the shadow
-  popupAnchor:  [0,((NDB_ICON_HEIGHT/2) + 23) * -1]  // point from which the popup should open relative to the iconAnchor
 });
 
 @Component({
@@ -196,11 +185,20 @@ export class MapPage {
     public utils: Utils,
     public aviation: Aviation,
     public router: Router,
-    public flightPlan: FlightPlan) {
+    public flightPlan: FlightPlan,
+    public localNotifications: LocalNotifications) {
 
     staticXPlaneWsServer  = xpWsSocket;
     staticAlertController = alertCtrl;
     MapPage.myself = this;
+
+    /*
+    this.localNotifications.schedule({
+      text: 'Delayed ILocalNotification',
+      trigger: {at: new Date(new Date().getTime() + 2000)},
+      led: 'FF0000',
+      sound: null
+   });*/
 
     this.dataService.currentSettings.subscribe(settings => {
       this.xplaneAddress = settings.xplaneAddress;
@@ -214,10 +212,27 @@ export class MapPage {
       }
 
       let airplane = this.airplaneServices.getAirplane(settings.airplaneId);
+      // Change size of icon accordingly with the Category Size of the Airplane
+      if ( airplane.categorySize == AirplaneCategorySize.BIGGER ) {
+           AIRPLANE_ICON_WIDTH  = DEFAULT_AIRPLANE_ICON_HEIGHT + 30;
+           AIRPLANE_ICON_HEIGHT = DEFAULT_AIRPLANE_ICON_HEIGHT + 30;
+      } else
+      if ( airplane.categorySize == AirplaneCategorySize.BIG ) {
+            AIRPLANE_ICON_WIDTH  = DEFAULT_AIRPLANE_ICON_HEIGHT + 15;
+            AIRPLANE_ICON_HEIGHT = DEFAULT_AIRPLANE_ICON_HEIGHT + 15;
+      } else
+      if ( airplane.categorySize == AirplaneCategorySize.MEDIUM_JETS ) {
+            AIRPLANE_ICON_WIDTH  = DEFAULT_AIRPLANE_ICON_HEIGHT + 5;
+            AIRPLANE_ICON_HEIGHT = DEFAULT_AIRPLANE_ICON_HEIGHT + 5;      
+      } else {
+           AIRPLANE_ICON_WIDTH  = DEFAULT_AIRPLANE_ICON_HEIGHT;
+           AIRPLANE_ICON_HEIGHT = DEFAULT_AIRPLANE_ICON_HEIGHT;
+      }
       AIRPLANE_ICON.options.iconUrl   = airplane.icon;
       AIRPLANE_ICON.options.shadowUrl = airplane.icon_shadow;
       if ( airplaneMarker )  {
-        airplaneMarker.setIcon(AIRPLANE_ICON);
+           airplaneMarker.setIcon(AIRPLANE_ICON);
+           this.checkZoomLevelChangesOnMap(true);
       }
     });
   }
@@ -387,31 +402,6 @@ export class MapPage {
     return angle;
   }
 
-  static direction() {
-    if ( lastBearing >  10 && lastBearing < 80 ) {
-      return "NE";
-    } else
-    if ( lastBearing >= 80 && lastBearing <= 100 ) {
-      return "E";
-    } else
-    if ( lastBearing >= 101 && lastBearing < 170 ) {
-      return "SE";
-    } else
-    if ( lastBearing >= 170 && lastBearing <= 190 ) {
-      return "S";
-    } else
-    if ( lastBearing >= 191 && lastBearing < 210 ) {
-      return "SW";
-    } else
-    if ( lastBearing >= 210 && lastBearing <= 290 ) {
-      return "W";
-    } else
-    if ( lastBearing >= 291 && lastBearing <= 310 ) {
-      return "NW";
-    }
-  }
-
-
   static rotateMarker(_bearing) {
     if ( airplaneMarker ) {
       _bearing = parseInt(_bearing);
@@ -508,7 +498,7 @@ export class MapPage {
 
     map.on('zoomend', this.zoomListener);
     this.router.setMap(map);
-    this.flightPlan.setMap(map);
+    this.flightPlan.setMap(map, identificationName);
 
     map.on('click',(e: any) => {
       this.defineWayPointOnClick(e);
@@ -550,9 +540,10 @@ export class MapPage {
   /*
    * Check changes that must be done according to the Zoom level
    */
-  checkZoomLevelChangesOnMap() {
+  checkZoomLevelChangesOnMap(updateAirplaneChanged?) {
     var size = [0, 0];
     var zoom = map.getZoom();
+    console.log(zoom);
     if ( zoom == 18 ) {
     } else
     if ( zoom == 17 ) {
@@ -560,10 +551,16 @@ export class MapPage {
     if ( zoom == 16 ) {
     } else
     if ( zoom == 15 ) {
+      size[0] = -20;
+      size[1] = -20;
     } else
     if ( zoom == 14 ) {
+      size[0] = -15;
+      size[1] = -15;
     } else
     if ( zoom == 13 ) {
+      size[0] = -13;
+      size[1] = -13;
     } else
     if ( zoom == 12 ) {
     } else
@@ -603,7 +600,10 @@ export class MapPage {
     }
 
     this.adaptAirplaneIconSizeToZoom(size);
-    this.adaptFlightPlanToZoom(zoom); 
+    // Check in case this is NOT ONLY an update for Airplane (icon vs. zoom) also call the Adapt Zoom to Flight Plan
+    if ( !updateAirplaneChanged ) {
+       this.adaptFlightPlanToZoom(zoom); 
+    }
   }
 
   adaptFlightPlanToZoom(zoom) {
@@ -616,6 +616,7 @@ export class MapPage {
      AIRPLANE_ICON.options.iconSize[1]   = (AIRPLANE_ICON_HEIGHT  - size[1]);
      AIRPLANE_ICON.options.shadowSize[0] = (AIRPLANE_ICON_WIDTH   - size[0]);
      AIRPLANE_ICON.options.shadowSize[1] = (AIRPLANE_ICON_HEIGHT  - size[1]);
+
      var widthAnchor  = (AIRPLANE_ICON.options.iconSize[0] / 2);
      var heightAnchor = (AIRPLANE_ICON.options.iconSize[1] - ((AIRPLANE_ICON.options.iconSize[1] * 50)/100));
      AIRPLANE_ICON.options.iconAnchor[0]   = widthAnchor;
@@ -623,8 +624,8 @@ export class MapPage {
      AIRPLANE_ICON.options.shadowAnchor[0] = widthAnchor  - 5;
      AIRPLANE_ICON.options.shadowAnchor[1] = heightAnchor - 4;
      if ( airplaneMarker ) {
-       airplaneMarker.setIcon(AIRPLANE_ICON);
-       MapPage.rotateMarker(lastBearing);
+          airplaneMarker.setIcon(AIRPLANE_ICON);
+          MapPage.rotateMarker(lastBearing);
      }
   }
 

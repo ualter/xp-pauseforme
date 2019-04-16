@@ -8,6 +8,11 @@ $ npm install @ionic-native/geolocation --save
 # Run Android Emulator
 $ ionic cordova run android --prod
 
+# Run iOS Emulator
+$ ionic cordova run ios -l -- --buildFlag="-UseModernBuildSystem=0"
+$ ionic cordova emulate ios -- --buildFlag="-UseModernBuildSystem=0"
+$ cordova run ios --debug --target "iPhone-8" --buildFlag='-UseModernBuildSystem=0'
+
 # List Valid Emulators
 $ ionic cordova run android --list
 
@@ -22,3 +27,7 @@ $ ionic cordova build ios -- --buildFlag="-UseModernBuildSystem=0"
 
 # Animations
 $ npm install --save web-animations-js
+
+# Local Notifications Plugin
+$ ionic cordova plugin add cordova-plugin-local-notification
+$ npm install @ionic-native/local-notifications

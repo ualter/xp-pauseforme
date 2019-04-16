@@ -32,6 +32,20 @@ export class Utils {
     constructor() {
     }
 
+    pad(num, size) {
+        return ('000000000' + num).substr(-size); 
+    }
+
+    /**
+     * Return if the Application is running under
+     * a Browser (Desktop) or an App (iOS, Android)
+     * (No practical and native solution found so far.)
+     * This is a workaround! (Shoud be tested already, through many situations!)
+     */
+    isAppPlatform() {
+        return (!document.URL.startsWith('http') || document.URL.startsWith('http://localhost:8080'));
+    }
+
     formatDateToday() {
         return this.formatDate(new Date());
     }
