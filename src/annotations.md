@@ -1,3 +1,8 @@
+### Steps install new workspace Ionic Project
+- $ npm i -g cordova ionic
+- $ npm install
+- $ ionic cordova prepare
+
 ### Check Plugins Outdated
 $ npm outdated
 
