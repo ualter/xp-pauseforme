@@ -57,10 +57,15 @@ $ ionic cordova run android --prod
 ```
 #### iOS
 ```shell
+## List iOS 
+$ ionic cordova emulate --list
 ## First option to Build (cleaner)
 $ ionic cordova build
 ## First option to Emulate (cleaner)
 $ ionic cordova emulate ios
+## First option to Emulate specific Device (cleaner)
+$ ionic cordova emulate ios --target "iPhone-X"
+$ ionic cordova emulate ios --target "iPad-Pro"
 ## If any problems, trying some alternatives...
 $ ionic cordova build ios -- --buildFlag="-UseModernBuildSystem=0"
 $ ionic cordova run ios -l -- --buildFlag="-UseModernBuildSystem=0"
