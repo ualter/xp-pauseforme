@@ -15,10 +15,6 @@ export enum AirplaneCategorySize {
     BIGGER
 }
 
-interface HashTable<T> {
-    [key: string]: T;
-}
-
 @Injectable()
 export class AirplaneServices {
 

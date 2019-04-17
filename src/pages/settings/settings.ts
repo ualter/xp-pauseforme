@@ -1,7 +1,6 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component } from '@angular/core';
 import { NavController, NavParams } from 'ionic-angular';
 import { DataService } from '../../app/services/DataService';
-import { Nav, Platform } from 'ionic-angular';
 import { AirplanesPage } from '../airplanes/airplanes';
 import { Utils } from '../../app/services/Utils';
 import { AirplaneServices } from '../../app/services/AirplaneServices';

@@ -2,7 +2,6 @@ import { Injectable } from "@angular/core";
 import { Utils } from "./Utils";
 import { Aviation } from './Aviation';
 import leaflet from 'leaflet';
-import { isRightSide } from "ionic-angular/umd/util/util";
 
 const ICON_WIDTH         = 100;
 const ICON_HEIGHT        = 50;
@@ -99,8 +98,8 @@ export class Router {
             // Let's create the Marker, it does not exist
             if ( this.vectorPath.length < 1 ) {
                 if ( nextDest ) { 
-                    var nextDestinationMarker    = this.createNextDestinationMarker(nextDest);
-                    var currentDestinationMarker = leaflet.marker([airplaneData.lat,airplaneData.lng], {icon: LOCATION_ICON}).addTo(map); 
+                    let nextDestinationMarker    = this.createNextDestinationMarker(nextDest);
+                    let currentDestinationMarker = leaflet.marker([airplaneData.lat,airplaneData.lng], {icon: LOCATION_ICON}).addTo(map); 
 
                     let htmlPopup = this.currentLocationHtmlPopup(currentDestinationMarker,[airplaneData.lat,airplaneData.lng],airplaneData);
                     currentDestinationMarker.bindPopup(htmlPopup);
@@ -134,8 +133,8 @@ export class Router {
 
                 if ( (nextDest.latitude != curLat) || (nextDest.longitude != curLng) ) {
                     // Changing to other destination
-                    var nextDestinationMarker    = this.createNextDestinationMarker(nextDest);
-                    var currentDestinationMarker = this.vectorPath[this.vectorPath.length-1].markerTo;
+                    let nextDestinationMarker    = this.createNextDestinationMarker(nextDest);
+                    let currentDestinationMarker = this.vectorPath[this.vectorPath.length-1].markerTo;
                     let route  = new Route();
                     route.markerTo   = nextDestinationMarker;
                     route.markerFrom = currentDestinationMarker;
@@ -200,7 +199,6 @@ export class Router {
              icon = AIRPORT_ICON;
         } else {
           this.utils.warn(nextDest.type + " Not found an ICON for it!!!");
-          console.log(nextDest.type + " Not found an ICON for it!!!");
         }
         this.utils.trace("Adding next destination marker to " + nextDest.latitude + ":" + nextDest.longitude);
         var nextDestinationMarker    = leaflet.marker([nextDest.latitude,nextDest.longitude], {icon: icon}).addTo(map);

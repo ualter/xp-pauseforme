@@ -22,20 +22,17 @@ import { Aviation } from '../../app/services/Aviation';
 import { DataService } from '../../app/services/DataService';
 import { Utils } from '../../app/services/Utils';
 import { XpWebSocketService } from '../../app/services/Xp.web.socket.service';
-import { LiteralMapEntry } from '@angular/compiler/src/output/output_ast';
 import { Router } from '../../app/services/Router';
 import { FlightPlan } from '../../app/services/FlightPlan';
 import { AirplaneServices, AirplaneCategorySize } from '../../app/services/AirplaneServices';
-import { TestScheduler } from 'rxjs';
-import { directive } from '@angular/core/src/render3/instructions';
 
 const MAX_ZOOM          = 15;
 const ZOOM_PAN_OPTIONS  = {animate: true, duration: 0.25, easeLinearity: 1.0, noMoveStart: false}; 
                         /*{animate: true, duration: 3.5, easeLinearity: 1.0, noMoveStart: false}*/
 
-const WS_CONNECTING = 0;
+//const WS_CONNECTING = 0;
 const WS_OPEN       = 1;
-const WS_CLOSING    = 2;
+//const WS_CLOSING    = 2;
 const WS_CLOSED     = 3;
 
 var mbAttr         = '&copy;<a href="https://www.openstreetmap.org/">OpenStreetMap</a>';
@@ -81,8 +78,8 @@ var followAirplane;
 var gamePaused;
 var buttonPlayPause;
 var buttonFollowAirplane;
-var buttonGoToLocation;
-var buttonDisconnect;
+//var buttonGoToLocation;
+//var buttonDisconnect;
 var identificationName;
 var staticXPlaneWsServer;
 var staticAlertController;
@@ -165,6 +162,7 @@ export class MapPage {
   private isConnectedWithXPlane:boolean = false;
   private connectionState:number = State.DISCONNECTED;
 
+  // tslint:disable-next-line
   private connectMeDisable:boolean = false;
   private connectMeState:boolean = false;
   private xplaneAddress: string;
@@ -504,7 +502,7 @@ export class MapPage {
   }
 
   defineWayPointOnClick(e: any) {
-    var choicePopUp = leaflet.popup();
+    //var choicePopUp = leaflet.popup();
     var containerBtn = leaflet.DomUtil.create('div');
     var btn2 = leaflet.DomUtil.create('button', '', containerBtn);
     btn2.setAttribute('type', 'button');
@@ -541,7 +539,6 @@ export class MapPage {
   checkZoomLevelChangesOnMap(updateAirplaneChanged?) {
     var size = [0, 0];
     var zoom = map.getZoom();
-    console.log(zoom);
     if ( zoom == 18 ) {
     } else
     if ( zoom == 17 ) {
@@ -661,7 +658,7 @@ export class MapPage {
             container.style.color = "rgba(47, 79, 79, 0.8)";
             e.stopPropagation();
           }
-          buttonGoToLocation = container;
+          //buttonGoToLocation = container;
           return container;
       }
     });
@@ -810,7 +807,7 @@ export class MapPage {
             e.stopPropagation();
           }
           
-          buttonDisconnect = container;
+          //buttonDisconnect = container;
           return container;
       }
     });
@@ -993,7 +990,6 @@ export class MapPage {
   }
   
   updateConnectMeState(event) {
-    console.log(event);
     this.utils.trace("Connect Me State change to:" + event);
     if (event == true) {
       this.visibilityContacting = "shown"; 
@@ -1013,7 +1009,7 @@ export class MapPage {
            this.xpWsSocket.getWebSocket().readyState == WS_OPEN ) {
         this.utils.info("Thread detecting CONNECTED state");
       } else {
-        var st = this.xpWsSocket.getWebSocket() ? this.xpWsSocket.getWebSocket().readyState : "null";
+        //var st = this.xpWsSocket.getWebSocket() ? this.xpWsSocket.getWebSocket().readyState : "null";
         this.utils.info("Thread detecting DISCONNECTED state");
         this.attempToConnect();
       }
@@ -1133,7 +1129,7 @@ export class MapPage {
     }
 
    
-    let autopilotState = airplaneData.autopilot.on == 1 ? "ON" : "OFF";
+    //let autopilotState = airplaneData.autopilot.on == 1 ? "ON" : "OFF";
     var html = `
       <span style="font-size:12px;"><b>AIRPLANE</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
       <hr>

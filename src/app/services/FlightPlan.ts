@@ -2,7 +2,7 @@ import { Injectable } from "@angular/core";
 import { Utils } from "./Utils";
 import { Aviation } from './Aviation';
 import leaflet from 'leaflet';
-import { Observable, Subject } from 'rxjs'; 
+import { Subject } from 'rxjs'; 
 import { MapPage } from '../../pages/map/map'
 
 var map;
@@ -186,7 +186,7 @@ export class FlightPlan {
     }
 
     showFlightPlan(flightPlan, _airplaneData){
-        this.utils.debug(flightPlan);
+        this.utils.trace(flightPlan);
         if ( flightPlan  ) {
             this.airplaneData = _airplaneData;
 
@@ -194,7 +194,6 @@ export class FlightPlan {
             this.cleanPreviousFlightPlan();
 
             let previousLatLng = [];
-            let departLatLng   = [];
             let pointList      = [];
             let marker;
 
@@ -204,12 +203,10 @@ export class FlightPlan {
                 flightPlanWaypoint["navaid"] = wpt;
                 pointList.push(new leaflet.LatLng(wpt.latitude,wpt.longitude));
 
-                let distanceFromPreviousWpt = 0;
-                let distanceFromDepartWpt   = 0;
-
                 // Depart Airport
                 if ( index == 0 ) {
-                  departLatLng = [wpt.latitude, wpt.longitude, wpt.id];
+                  //let departLatLng = [];
+                  //departLatLng = [wpt.latitude, wpt.longitude, wpt.id];
                   this.addAirportToGroups(wpt,true);
                 } else
                 // Arrival Airport
@@ -217,12 +214,11 @@ export class FlightPlan {
                   this.addAirportToGroups(wpt,false);
                 } else {
                   if ( previousLatLng.length > 0 ) {
+                    // In case debugging message
                     // Calculating distances From Depart Airport and from Last Waypoint
-                    distanceFromPreviousWpt = Math.floor(this.aviation.distance(wpt.longitude, wpt.latitude, previousLatLng[1], previousLatLng[0]));
-                    distanceFromDepartWpt   = Math.floor(this.aviation.distance(wpt.longitude, wpt.latitude, departLatLng[1], departLatLng[0]));
-
+                    //let distanceFromPreviousWpt = Math.floor(this.aviation.distance(wpt.longitude, wpt.latitude, previousLatLng[1], previousLatLng[0]));
+                    //let distanceFromDepartWpt   = Math.floor(this.aviation.distance(wpt.longitude, wpt.latitude, departLatLng[1], departLatLng[0]));
                     //var msg = previousLatLng[2] + " to " + wpt.id + " " + distanceFromPreviousWpt + " From Departing " + distanceFromDepartWpt;
-                    //console.log(msg);
                   }
 
                   // Marker Navaids
@@ -367,7 +363,6 @@ export class FlightPlan {
         this.airplaneLastLat = this.airplaneData.lat;
         this.airplaneLastLng = this.airplaneData.lng;
       }
-      console.log(this.airplaneData.pauseforme)
     }
 
     updateMarkerPopUps() {
@@ -731,7 +726,6 @@ export class FlightPlan {
         leaflet.DomEvent.on(btnPauseHere, 'click', (e: any) => {
           e.stopPropagation();
 
-          console.log(navaid);
           var buttonPause = document.getElementById(buttonPauseName);
           var dist        = buttonPause.getAttribute('nm');
           var msg         = "{PAUSE}|" + navaid.id + "|" + navaid.type + "|" + dist;

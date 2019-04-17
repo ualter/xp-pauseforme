@@ -20,9 +20,9 @@ export class Aviation {
         var brng  = Math.atan2(y, x);
         var bearing = brng / Math.PI * 180;
 
-        if (bearing == 0) {
+        /*if (bearing == 0) {
             console.log("[" +lon1 + "," + lat1 + " [" + lon2 + "," + lat2 + "] = " + bearing);
-        }
+        }*/
         return bearing;
     }
 
