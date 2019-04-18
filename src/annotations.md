@@ -26,11 +26,16 @@ $ npm-check --skip-unused
 ```
 #### Update Plugins
 ```shell
+## Better option until now
+$ npm i -g npm-check-updates
+$ ncu -u
+$ npm install
 ## Simple Version
 $ npm update (simple version)
 ## Update package.json, etc.
 $ npm i -g npm-check-updates && ncu -u && npm i
 ```
+
 #### Install OpenStreetMaps Plugin (no need if fresh start)
 ```shell
 $ npm install leaflet --save
@@ -59,16 +64,20 @@ $ ionic cordova run android --prod
 ```shell
 ## List iOS 
 $ ionic cordova emulate --list
-## First option to Build (cleaner)
+## Build
 $ ionic cordova build
-## First option to Emulate (cleaner)
+## Emulate
 $ ionic cordova emulate ios
-## First option to Emulate specific Device (cleaner)
+## Emulate with Livereload and Console logs on the IONIC Cli
+$ ionic cordova emulate ios --lireload --consolelogs
+$ ionic cordova emulate ios --target "iPhone-SE" --livereload --consolelogs
+## Run
+$ ionic cordova emulate ios
+## First option to Emulate specific Device
 $ ionic cordova emulate ios --target "iPhone-X"
 $ ionic cordova emulate ios --target "iPad-Pro"
-## If any problems, trying some alternatives...
-$ ionic cordova build ios -- --buildFlag="-UseModernBuildSystem=0"
-$ ionic cordova run ios -l -- --buildFlag="-UseModernBuildSystem=0"
+## If any problems with iOS versions, etc., trying some alternatives...
+$ ionic cordova run ios -- --buildFlag="-UseModernBuildSystem=0"
 $ ionic cordova emulate ios -- --buildFlag="-UseModernBuildSystem=0"
 $ cordova run ios --debug --target "iPhone-8" --buildFlag='-UseModernBuildSystem=0'
 ```
