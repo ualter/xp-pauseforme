@@ -65,6 +65,7 @@ $ ionic cordova build
 $ ionic cordova emulate ios
 ## Emulate with Livereload and Console logs on the IONIC Cli
 $ ionic cordova emulate ios --lireload --consolelogs
+$ ionic cordova emulate ios --target "iPhone-SE" --livereload --consolelogs
 ## Run
 $ ionic cordova emulate ios
 ## First option to Emulate specific Device
