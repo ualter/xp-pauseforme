@@ -26,11 +26,16 @@ $ npm-check --skip-unused
 ```
 #### Update Plugins
 ```shell
+## Better option until now
+$ npm i -g npm-check-updates
+$ ncu -u
+$ npm install
 ## Simple Version
 $ npm update (simple version)
 ## Update package.json, etc.
 $ npm i -g npm-check-updates && ncu -u && npm i
 ```
+
 #### Install OpenStreetMaps Plugin (no need if fresh start)
 ```shell
 $ npm install leaflet --save
